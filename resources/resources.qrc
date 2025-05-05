@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icon.png</file>
+        <file>arrow_down.png</file>
+		<file>black_down_arrow.png</file>
+        <file>minimize.svg</file>
+        <file>maximize.svg</file>
+        <file>close.svg</file>
+    </qresource>
+</RCC>
