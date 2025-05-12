@@ -100,9 +100,6 @@ compiler_rcc_clean:
 debug/qrc_resources.cpp: ../../resources/resources.qrc \
 		C:/PC/miscelanous/qt/6.9.0/mingw_64/bin/rcc.exe \
 		../../resources/arrow_down.png \
-		../../resources/maximize.svg \
-		../../resources/close.svg \
-		../../resources/minimize.svg \
 		../../resources/icon.png \
 		../../resources/black_down_arrow.png
 	C:\PC\miscelanous\qt\6.9.0\mingw_64\bin\rcc.exe -name resources --no-zstd ..\..\resources\resources.qrc -o debug\qrc_resources.cpp

@@ -8,7 +8,6 @@
 #include <QTextStream>
 #include <QMessageBox>
 #include <QObject>
-#include <QPalette>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QMenuBar>
@@ -20,6 +19,10 @@
 #include <QComboBox>
 #include <QSettings>
 #include <QProcess>
+#include <QPalette>
+#include <QListWidget>
+#include <QStackedWidget>
+#include <QRadioButton>
 
 ///asta doar asa de tupeu daca vrei sa faci cand porneste prima oara sa tina minte ce are nevoie utilizatorul 
 ///daca are nevoie de un text editor sau de ide (adica sa ai tree de fisiere in stanga , sa ai un terminal jos sa implementezi pt python si pt c++ suport)
@@ -77,14 +80,21 @@ QString detectSystemTheme() {
     }
 }
 
-///void text_lines_characters(QTextEdit *textEdit) {
-///    QString text = textEdit->toPlainText();
-///    int characterCount = text.length();
-///    int lineCount = text.count('\n') + 1; // add 1 for the last line
-///
-///    qDebug() << "Characters:" << characterCount<<"\n";
-///    qDebug() << "Lines:" << lineCount<<"\n";
-///}
+void text_lines_characters(const QByteArray& rawData) {
+    int characterCount = rawData.size();
+    int lineCount = rawData.isEmpty() ? 0 : 1;
+    for (char c : rawData) {
+        if (c == '\n') lineCount++;
+    }
+    ///lineCount++;
+    ///if (!rawData.isEmpty() && rawData.back() != '\n') {
+    ///    lineCount++;
+    ///}
+    int char_crlf = characterCount + lineCount - 1;;
+    qDebug() << "Bytes in file (lf):" << characterCount;
+    qDebug() << "Characters (crlf):" << char_crlf << "\n";
+    qDebug() << "Lines:" << lineCount;
+}
 
 struct Theme {
     QString background;
@@ -99,7 +109,7 @@ struct Theme {
 const Theme DarkContrast {
     "#000000",  // background
     "#ffffff",  // textColor
-    "#000000",  // buttonColor
+    "#232323",  // buttonColor
     "#333333",  // buttonBorder
     "#2d2d2d",  // buttonHover
     "#000000",  // textEditBg
@@ -109,7 +119,7 @@ const Theme DarkContrast {
 const Theme DarkGray {
     "#1e1e1e",  // background
     "#ffffff",  // textColor
-    "#3a3a3a",  // buttonColor
+    "#1e1e1e",  // buttonColor
     "#666666",  // buttonBorder
     "#505050",  // buttonHover
     "#2b2b2b",  // textEditBg
@@ -145,7 +155,6 @@ QString createStyleSheet(const Theme& theme) {
             color: %2;
             font-size: 14px;
         }
-        
         QTextEdit {
             background-color: %6;
             color: %2;
@@ -153,7 +162,6 @@ QString createStyleSheet(const Theme& theme) {
             padding: 6px;
             border-radius: 6px;
         }
-        
         QPushButton {
             background-color: %3;
             color: %2;
@@ -161,50 +169,40 @@ QString createStyleSheet(const Theme& theme) {
             padding: 6px;
             border-radius: 6px;
         }
-        
         QPushButton:hover {
             background-color: %5;
         }
-        
         QMenuBar {
             background-color: %1;
             color: %2;
         }
-        
         QMenuBar::item:selected {
             background-color: %5;
         }
-        
         QMenu {
             background-color: %1;
             color: %2;
             border: 1px solid %7;
         }
-        
         QMenu::item:selected {
             background-color: %5;
         }
-        
         QScrollBar:vertical {
             background-color: %1;
             width: 12px;
         }
-        
         QScrollBar::handle:vertical {
             background-color: %3;
             border-radius: 6px;
             min-height: 20px;
         }
-        
         QScrollBar::handle:vertical:hover {
             background-color: %5;
         }
-       
         QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical {
             height: 0px;
             background: none;
         }
-
         QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical {
             background: %1;
         }
@@ -215,25 +213,20 @@ QString createStyleSheet(const Theme& theme) {
             padding: 6px;
             border-radius: 6px;
         }
-
         QComboBox:hover {
             background-color: %5;
         }
-
         QComboBox::drop-down {
             subcontrol-origin: padding;
             subcontrol-position: top right;
             width: 20px;
             border-left: 1px solid %4;
-
         }
-
         QComboBox::down-arrow {
             image: url(%8);
             width: 15px;
             height: 15px;
         }
-        
         QComboBox QAbstractItemView {
             background-color: %3;
             color: %2;
@@ -242,6 +235,46 @@ QString createStyleSheet(const Theme& theme) {
             selection-color: %2;
             outline: none;
         }
+        QListWidget {
+            background-color: %3;
+            border: none;
+            padding: 5px;
+        }
+        QListWidget::item {
+            padding: 8px;
+            border-radius: 5px;
+        }
+        QListWidget::item:selected {
+            background-color: %5;
+            color: %2;
+        }
+        QListWidget::item:focus {
+            outline: none;
+        }
+        QListWidget::item:hover {
+            background-color: %5;
+        }
+        QListWidget::item:!active {
+            outline: none;
+        }
+        QStackedWidget {
+            background-color: %6;
+            /*border: 1px solid %7;*/
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        QStackedWidget:focus {
+            outline: none;
+            border: none;
+        }
+        QComboBox:focus, QComboBox QAbstractItemView:focus {
+            outline: none;
+            border: 1px solid %4;
+        }
+        QComboBox QAbstractItemView {
+            outline: none;
+        } 
     )")
     .arg(theme.background)    // %1
     .arg(theme.textColor)     // %2
@@ -253,33 +286,83 @@ QString createStyleSheet(const Theme& theme) {
     .arg(arrowImage);         // %8
 }
 
-void text_lines_characters(QFile *file)
-{
-    QByteArray rawData = file->readAll();
-    qDebug() << "Bytes in file (Notepad++ style):" << rawData.size();
-    int lineCount = 0;
-    int characterCount = 0;
-    for (int i = 0; i < rawData.size(); ++i) {
-        if (rawData[i] == '\n') {
-            lineCount++;
-        }
-        characterCount++;
-    }
-    qDebug() << "Characters:" << characterCount << "\n";
-    qDebug() << "Lines:" << lineCount << "\n";
-}
-
-void applySystemTheme(QApplication& app , QPalette& darkPalette) {
+void applySystemTheme(QApplication& app) {
     QString systemTheme = detectSystemTheme();
     if (systemTheme == "Dark") {
         app.setStyleSheet(createStyleSheet(DarkContrast));
     } else if (systemTheme == "Light") {
         app.setStyleSheet(createStyleSheet(Light));
-        darkPallete.setColor(QPalette::Text, Qt::white);
     }
     else {
         app.setStyleSheet(createStyleSheet(DarkGray));
     }
+}
+/// nu o sa ma angajeze nimeni vreodata daca programez totul intro singur fisier da nah am vrut si eu sa ma distrez o data
+void settings(QMainWindow &window, QApplication &app) {
+    QDialog *settingsDialog = new QDialog(&window);
+    settingsDialog->setAttribute(Qt::WA_DeleteOnClose);
+    settingsDialog->setWindowTitle("Settings");
+    settingsDialog->setFixedSize(600, 400);
+
+    QHBoxLayout *mainlayout = new QHBoxLayout();
+    QListWidget *sidebar = new QListWidget();
+    sidebar->addItem("General");
+    sidebar->addItem("Theme & Colors");
+    sidebar->setFixedWidth(180);
+    QStackedWidget *stackedWidget = new QStackedWidget();
+
+    ///general settings
+    QWidget *general_frame = new QWidget;
+    QHBoxLayout *general_layout = new QHBoxLayout(general_frame);
+    QRadioButton *text_editor_rad = new QRadioButton("Text Editor");
+    QRadioButton *ide_rad = new QRadioButton("IDE");
+    general_layout->addWidget(new QLabel("Choose operating a mode:"));
+    general_layout->addWidget(text_editor_rad);
+    general_layout->addWidget(ide_rad);
+    text_editor_rad->setChecked(true);
+    stackedWidget->insertWidget(0 , general_frame);
+
+    ///theme settings
+    QWidget *theme_frame = new QWidget;
+    QVBoxLayout *theme_layout = new QVBoxLayout(theme_frame);
+    QHBoxLayout *theme_choose = new QHBoxLayout();
+    QLabel *infoLabel = new QLabel("Choose a theme:");
+    QComboBox *themeDropdown = new QComboBox();
+    theme_choose->setSpacing(5);
+    theme_choose->addWidget(infoLabel);
+    theme_choose->addWidget(themeDropdown, 1);
+    theme_choose->addStretch();
+    themeDropdown->addItems({
+        "System Theme", "Dark Contrast", "Dark Gray", "Light", "Solarized"
+    });
+    themeDropdown->setCurrentText("System Theme");
+    QObject::connect(themeDropdown, &QComboBox::currentTextChanged, [&app](const QString &themeName) {
+        if (themeName == "System Theme") {
+            applySystemTheme(app);
+        } else if (themeName == "Dark Contrast") {
+            app.setStyleSheet(createStyleSheet(DarkContrast));
+        } else if (themeName == "Dark Gray") {
+            app.setStyleSheet(createStyleSheet(DarkGray));
+        } else if (themeName == "Light") {
+            app.setStyleSheet(createStyleSheet(Light));
+        } else if (themeName == "Solarized") {
+            app.setStyleSheet(createStyleSheet(Solarized));
+        }
+    });
+    theme_layout->addLayout(theme_choose);
+    theme_layout->addStretch();
+    stackedWidget->insertWidget(1, theme_frame);
+
+    sidebar->setCurrentRow(0);
+    sidebar->setFocusPolicy(Qt::NoFocus);
+    QObject::connect(sidebar, &QListWidget::currentRowChanged, stackedWidget, &QStackedWidget::setCurrentIndex);
+    mainlayout->addWidget(sidebar);
+    mainlayout->addWidget(stackedWidget);
+    settingsDialog->setLayout(mainlayout);
+    settingsDialog->show(); //exec il face sa nu mai poti interactiona cu restul aplicatiei
+    /// show il face doar sa apara si practic se termina imediat pentru ca sa terminat functia
+    ///si de aia folosesti cu heap allocation ca sa nu se stearga automat
+    ///adauga un buton de reset la setari ca sa revina la default
 }
 
 int main(int argc, char *argv[]) {
@@ -295,6 +378,11 @@ int main(int argc, char *argv[]) {
     QPushButton loadButton("Load");
     QPushButton settingsButton("Settings");
 
+    QPalette darkPalette;
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    window.setAutoFillBackground(true);
+    app.setPalette(darkPalette);
+
     QMenuBar menuBar;
     QMenu fileMenu("File", &menuBar);
     QAction newAction("New", &menuBar);
@@ -303,12 +391,7 @@ int main(int argc, char *argv[]) {
 
     QVBoxLayout mainlayout;
     QHBoxLayout buttonlayout;
-
-
-    darkPalette.setColor(QPalette::Text, Qt::black);
-    ///ok trebuie titlebar custom ca altfel nu se mai poate ca sa customizez culoarea de la titlebar
     
-        
     ///adauga iconita la butoane mrog asta optional , dar adaug o coloana cu nr randului in stanga
     ///adauga in dreapta jos ca la notepad linia si caracterul la care te afli
     ///adauga optiuna/functionalitate de a da quick save gen daca am deschis un fisier cu load atunci cand dau save daca vede ca 
@@ -347,13 +430,11 @@ int main(int argc, char *argv[]) {
         if (!fileName.isEmpty()) {
             QFile file(fileName);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                ///QByteArray rawData = file.readAll();
-                ///qDebug() << "Bytes in file (Notepad++ style):" << rawData.size();
-                QTextStream in(&file);
-                QString content = in.readAll();
+                QByteArray rawData = file.readAll();
+                text_lines_characters(rawData);
+                QString content = QString::fromUtf8(rawData);
                 file.close();
                 textEdit.setPlainText(content);
-                text_lines_characters(&file);
                 currentFilePath = fileName; // <-- Save path
                 if (currentFilePath.isEmpty()) {
                     window.setWindowTitle("Basic ahh Text Editor");
@@ -370,62 +451,21 @@ int main(int argc, char *argv[]) {
 
     settingsButton.setToolTip("Settings");
     settingsButton.setText("⚙️");
+    ///fa settings fara titlebar si cu fixed size
+    ///cand se schimba stylesheetu sa se schimbe si culoarea de la titlebar
+    ///adauga optiunea de rounded sau nu la toata aplicatia
+    ///ok deci nu imi place cum arata dropdown cand e selectat e foarte naspa blue ala sa modifici in stylesheet
+    /// adauga dropdown intrun horizontal layout ca sa fie in dreptul labelui
+    /// adauga niste text lineuri in caz ca vrea custom
+    /// a adauga 2 radio buttonuri in stanga la label si in stanga labelui custom pt zona custom ca sa stie cand da apply ce setare foloseste
+    /// toate border-radius o sa aiba valoarea lor modificata cu text edit
+    /// fa sa se mareasca interfata cand apar text lineurile
+    /// adauga un buton apply la final si de reset si de close
+    ///adauga o modalitate sa salveze ultimele fisiere pe care le ai avut deschise sa le deschida instant si setarile pe care le a ales(ex sia facut tema custom)
     QObject::connect(&settingsButton, &QPushButton::clicked, [&]()
     {
-        QDialog *settingsDialog = new QDialog(&window);  // Make it a child of the main window
-        ///settingsDialog->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-        settingsDialog->setWindowTitle("Settings");
-        settingsDialog->setFixedSize(400, 250);
-        ///daca ai chef si timp adauga custom titlebar la settings ca sa scoti iconita aia
-        QHBoxLayout *layout = new QHBoxLayout(settingsDialog);
-        ///QVBoxLayout *vbox = new QVBoxLayout(settingsDialog); nu inca
-        QLabel *infoLabel = new QLabel("Choose a theme:", settingsDialog);
-        QComboBox *themeDropdown = new QComboBox(settingsDialog); // Create a dropdown menu for themes
-        layout->setSpacing(5);
-        layout->addWidget(infoLabel);
-        layout->addWidget(themeDropdown, 1);
-        layout->addStretch();
-
-        themeDropdown->addItem("System Theme");
-        themeDropdown->addItem("Dark Contrast"); 
-        themeDropdown->addItem("Dark Gray");
-        themeDropdown->addItem("Light");
-        themeDropdown->addItem("Solarized");
-
-        themeDropdown->setCurrentText("System Theme");
-        ///fa settings fara titlebar si cu fixed size
-        ///cand se schimba stylesheetu sa se schimbe si culoarea de la titlebar
-        ///adauga optiunea de rounded sau nu la toata aplicatia
-        ///ok deci nu imi place cum arata dropdown cand e selectat e foarte naspa blue ala sa modifici in stylesheet
-        /// adauga dropdown intrun horizontal layout ca sa fie in dreptul labelui
-        /// adauga niste text lineuri in caz ca vrea custom
-        /// a adauga 2 radio buttonuri in stanga la label si in stanga labelui custom pt zona custom ca sa stie cand da apply ce setare foloseste
-        /// toate border-radius o sa aiba valoarea lor modificata cu text edit
-        /// fa sa se mareasca interfata cand apar text lineurile
-        /// adauga un buton apply la final si de reset si de close
-        ///adauga o modalitate sa salveze ultimele fisiere pe care le ai avut deschise sa le deschida instant si setarile pe care le a ales(ex sia facut tema custom)
-
-        QObject::connect(themeDropdown, &QComboBox::currentTextChanged, [&app](const QString &themeName) {
-                if (themeName == "System Theme") {
-                    applySystemTheme(app);
-                } else if (themeName == "Dark Contrast") {
-                    app.setStyleSheet(createStyleSheet(DarkContrast));
-                } else if (themeName == "Dark Gray") {
-                    app.setStyleSheet(createStyleSheet(DarkGray));
-                } else if (themeName == "Light") {
-                    app.setStyleSheet(createStyleSheet(Light));
-                } else if (themeName == "Solarized") {
-                    app.setStyleSheet(createStyleSheet(Solarized));
-                }
-        });
-
-        settingsDialog->setLayout(layout);
-        settingsDialog->show(); // Show the dialog
+        settings(window, app);
     });
-    QPalette darkPalette;
-    darkPalette.setColor(QPalette::WindowText, Qt::white);
-    window.setAutoFillBackground(true);
-    app.setPalette(darkPalette);
 
     applySystemTheme(app);
     buttonlayout.addWidget(&saveButton);
