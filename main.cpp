@@ -1,3 +1,4 @@
+#include <utility>
 #include <QApplication>
 #include <QTextEdit>
 #include <QPushButton>
@@ -23,6 +24,10 @@
 #include <QListWidget>
 #include <QStackedWidget>
 #include <QRadioButton>
+#include <QLineEdit>
+#include <QStatusBar>
+#include <QMenu>
+#include <QFontMetrics>
 
 ///asta doar asa de tupeu daca vrei sa faci cand porneste prima oara sa tina minte ce are nevoie utilizatorul 
 ///daca are nevoie de un text editor sau de ide (adica sa ai tree de fisiere in stanga , sa ai un terminal jos sa implementezi pt python si pt c++ suport)
@@ -42,6 +47,7 @@ int osdetection()
     return ostype;
 }
 int ostype = osdetection();
+int radius = 6;
 
 QString detectSystemTheme() {
     switch(ostype) {
@@ -80,20 +86,14 @@ QString detectSystemTheme() {
     }
 }
 
-void text_lines_characters(const QByteArray& rawData) {
+std::pair<int, int> text_lines_characters(const QByteArray& rawData) {
     int characterCount = rawData.size();
-    int lineCount = rawData.isEmpty() ? 0 : 1;
+    int lineCount = 1;
     for (char c : rawData) {
         if (c == '\n') lineCount++;
     }
-    ///lineCount++;
-    ///if (!rawData.isEmpty() && rawData.back() != '\n') {
-    ///    lineCount++;
-    ///}
     int char_crlf = characterCount + lineCount - 1;;
-    qDebug() << "Bytes in file (lf):" << characterCount;
-    qDebug() << "Characters (crlf):" << char_crlf << "\n";
-    qDebug() << "Lines:" << lineCount;
+    return std::make_pair(lineCount, char_crlf);
 }
 
 struct Theme {
@@ -146,7 +146,7 @@ const Theme Solarized {
     "#586e75"   // borderColor
 };
 /// nu mai fac design sau css in viata mea 
-QString createStyleSheet(const Theme& theme) {
+QString createStyleSheet(const Theme& theme, int borderRadius = 6) {
     QString arrowImage = (theme.background == Light.background) ? ":/black_down_arrow.png" : ":/arrow_down.png";
     ///vezi ce faci cu scrollbarul pe high contrast black
     return QString(R"(
@@ -160,14 +160,14 @@ QString createStyleSheet(const Theme& theme) {
             color: %2;
             border: 1px solid %7;
             padding: 6px;
-            border-radius: 6px;
+            border-radius: %9px;
         }
         QPushButton {
             background-color: %3;
             color: %2;
             border: 1px solid %4;
             padding: 6px;
-            border-radius: 6px;
+            border-radius: %9px;
         }
         QPushButton:hover {
             background-color: %5;
@@ -193,7 +193,7 @@ QString createStyleSheet(const Theme& theme) {
         }
         QScrollBar::handle:vertical {
             background-color: %3;
-            border-radius: 6px;
+            border-radius: %9px;
             min-height: 20px;
         }
         QScrollBar::handle:vertical:hover {
@@ -211,7 +211,7 @@ QString createStyleSheet(const Theme& theme) {
             color: %2;
             border: 1px solid %4;
             padding: 6px;
-            border-radius: 6px;
+            border-radius: %9px;
         }
         QComboBox:hover {
             background-color: %5;
@@ -242,7 +242,7 @@ QString createStyleSheet(const Theme& theme) {
         }
         QListWidget::item {
             padding: 8px;
-            border-radius: 5px;
+            border-radius: %9px;
         }
         QListWidget::item:selected {
             background-color: %5;
@@ -259,9 +259,8 @@ QString createStyleSheet(const Theme& theme) {
         }
         QStackedWidget {
             background-color: %6;
-            /*border: 1px solid %7;*/
-            border: none;
-            border-radius: 10px;
+            border: 1px solid %7;
+            border-radius: %9px;
             padding: 15px;
         }
         QStackedWidget:focus {
@@ -274,6 +273,28 @@ QString createStyleSheet(const Theme& theme) {
         }
         QComboBox QAbstractItemView {
             outline: none;
+        }
+        QStatusBar QPushButton[flat="true"] {
+            border: none;
+            background: transparent;
+            padding: 0 5px;
+            color: %2;
+        }
+        QStatusBar QLabel {
+            color: %2;
+        }
+        QStatusBar {
+            background-color: %3;
+            color: %2;
+            border-left: 1px solid %7;
+            border-right: 1px solid %7;
+            border-bottom: 1px solid %7;
+            border-top: 1px solid %7;
+            border-bottom-left-radius: %9px;
+            border-bottom-right-radius: %9px;
+        }
+        QStatusBar::item {
+            border: none;
         } 
     )")
     .arg(theme.background)    // %1
@@ -283,21 +304,36 @@ QString createStyleSheet(const Theme& theme) {
     .arg(theme.buttonHover)   // %5
     .arg(theme.textEditBg)    // %6
     .arg(theme.borderColor)   // %7
-    .arg(arrowImage);         // %8
+    .arg(arrowImage)          // %8
+    .arg(borderRadius);        // %9
 }
 
-void applySystemTheme(QApplication& app) {
+Theme applySystemTheme(QApplication& app, int borderRadius = 6) {
     QString systemTheme = detectSystemTheme();
     if (systemTheme == "Dark") {
-        app.setStyleSheet(createStyleSheet(DarkContrast));
+        app.setStyleSheet(createStyleSheet(DarkContrast, borderRadius));
+        return DarkContrast;
     } else if (systemTheme == "Light") {
-        app.setStyleSheet(createStyleSheet(Light));
+        app.setStyleSheet(createStyleSheet(Light, borderRadius));
+        return Light;
+    } else {
+        app.setStyleSheet(createStyleSheet(DarkGray, borderRadius));
+        return DarkGray;
     }
-    else {
-        app.setStyleSheet(createStyleSheet(DarkGray));
+}
+
+void eof_save(QTextEdit &textEdit) {
+    QString content = textEdit.toPlainText();
+    if (ostype == 1)
+    {
+        content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
+    } else 
+    {
+        content.replace("\r\n", "\n").replace("\r", "\n");
     }
 }
 /// nu o sa ma angajeze nimeni vreodata daca programez totul intro singur fisier da nah am vrut si eu sa ma distrez o data
+Theme currentTheme;
 void settings(QMainWindow &window, QApplication &app) {
     QDialog *settingsDialog = new QDialog(&window);
     settingsDialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -309,8 +345,9 @@ void settings(QMainWindow &window, QApplication &app) {
     sidebar->addItem("General");
     sidebar->addItem("Theme & Colors");
     sidebar->setFixedWidth(180);
+    sidebar->setSpacing(3);
     QStackedWidget *stackedWidget = new QStackedWidget();
-
+    
     ///general settings
     QWidget *general_frame = new QWidget;
     QHBoxLayout *general_layout = new QHBoxLayout(general_frame);
@@ -336,22 +373,70 @@ void settings(QMainWindow &window, QApplication &app) {
         "System Theme", "Dark Contrast", "Dark Gray", "Light", "Solarized"
     });
     themeDropdown->setCurrentText("System Theme");
-    QObject::connect(themeDropdown, &QComboBox::currentTextChanged, [&app](const QString &themeName) {
+    theme_layout->addLayout(theme_choose);
+    ///theme_layout->addStretch();
+    stackedWidget->insertWidget(1, theme_frame);
+
+    QHBoxLayout *radiusLayout = new QHBoxLayout();
+    QLabel *radiusLabel = new QLabel("Border radius:");
+    QLineEdit *radiusInput = new QLineEdit();
+    radiusInput->setPlaceholderText("6");
+    radiusInput->setFixedWidth(60);
+    QPushButton *applyRadiusBtn = new QPushButton("✅");
+    applyRadiusBtn->setToolTip("Apply radius");
+    radiusLayout->addWidget(radiusLabel);
+    radiusLayout->addWidget(radiusInput);
+    radiusLayout->addWidget(applyRadiusBtn);
+    theme_layout->addLayout(radiusLayout);
+    QObject::connect(applyRadiusBtn, &QPushButton::clicked, [&app, &window, radiusInput]() {
+        QString radiusValue = radiusInput->text().isEmpty() ? "6" : radiusInput->text();
+        if(radiusValue.toInt() < 0) {
+            radiusValue = "0";
+        }
+        if(radiusValue.toInt() > 16) {
+            radiusValue = "16";
+            radiusInput->setText("16");
+            QMessageBox::information(&window, "Info", "Maximum radius is 16");
+        }
+        QString styleName = app.styleSheet();        
+        app.setStyleSheet(createStyleSheet(currentTheme, radiusValue.toInt()));
+    });
+    QObject::connect(themeDropdown, &QComboBox::currentTextChanged, [&app, radiusInput](const QString &themeName) {
+        radius = radiusInput->text().isEmpty() ? 6 : radiusInput->text().toInt();
+        
         if (themeName == "System Theme") {
-            applySystemTheme(app);
+            applySystemTheme(app, radius);
         } else if (themeName == "Dark Contrast") {
-            app.setStyleSheet(createStyleSheet(DarkContrast));
+            app.setStyleSheet(createStyleSheet(DarkContrast, radius));
+            currentTheme = DarkContrast;
         } else if (themeName == "Dark Gray") {
-            app.setStyleSheet(createStyleSheet(DarkGray));
+            app.setStyleSheet(createStyleSheet(DarkGray, radius));
+            currentTheme = DarkGray;
         } else if (themeName == "Light") {
-            app.setStyleSheet(createStyleSheet(Light));
+            app.setStyleSheet(createStyleSheet(Light, radius));
+            currentTheme = Light;
         } else if (themeName == "Solarized") {
-            app.setStyleSheet(createStyleSheet(Solarized));
+            app.setStyleSheet(createStyleSheet(Solarized, radius));
+            currentTheme = Solarized;
         }
     });
-    theme_layout->addLayout(theme_choose);
-    theme_layout->addStretch();
-    stackedWidget->insertWidget(1, theme_frame);
+    QLabel *tba_custom_colors = new QLabel("New custom colors TBA");
+    theme_layout->addWidget(tba_custom_colors);
+
+    QPushButton *resetBtn_theme = new QPushButton("🔄");
+    resetBtn_theme->setToolTip("Reset theme");
+    theme_choose->addWidget(resetBtn_theme);
+    QObject::connect(resetBtn_theme, &QPushButton::clicked, [&app]() {
+        applySystemTheme(app);
+    });
+    QPushButton *resetBtn_radius = new QPushButton("🔄");
+    resetBtn_radius->setToolTip("Reset radius");
+    radiusLayout->addWidget(resetBtn_radius);
+    radiusLayout->addStretch();
+    QObject::connect(resetBtn_radius, &QPushButton::clicked, [&app, radiusInput]() {
+        radiusInput->setText("6");
+        app.setStyleSheet(createStyleSheet(currentTheme, 6));
+    });
 
     sidebar->setCurrentRow(0);
     sidebar->setFocusPolicy(Qt::NoFocus);
@@ -363,6 +448,75 @@ void settings(QMainWindow &window, QApplication &app) {
     /// show il face doar sa apara si practic se termina imediat pentru ca sa terminat functia
     ///si de aia folosesti cu heap allocation ca sa nu se stearga automat
     ///adauga un buton de reset la setari ca sa revina la default
+}
+
+QString detectFileType(const QString& filePath) {
+    QFileInfo fileInfo(filePath);
+    QString extension = fileInfo.suffix().toLower();
+    
+    // Map of extensions to file types
+    QMap<QString, QString> extensionMap;
+    
+    // Text files
+    extensionMap["txt"] = "Text Document (.txt)";
+    extensionMap["log"] = "Log File (.log)";
+    
+    // Web Development
+    extensionMap["html"] = "HTML (.html, .htm)";
+    extensionMap["htm"] = "HTML (.html, .htm)";
+    extensionMap["css"] = "CSS (.css)";
+    extensionMap["js"] = "JavaScript (.js)";
+    extensionMap["ts"] = "TypeScript (.ts)";
+    extensionMap["php"] = "PHP (.php)";
+    extensionMap["xml"] = "XML (.xml)";
+    extensionMap["json"] = "JSON (.json)";
+    
+    // System Programming
+    extensionMap["c"] = "C (.c)";
+    extensionMap["cpp"] = "C++ (.cpp, .cc, .cxx)";
+    extensionMap["cc"] = "C++ (.cpp, .cc, .cxx)";
+    extensionMap["cxx"] = "C++ (.cpp, .cc, .cxx)";
+    extensionMap["h"] = "C Header (.h)";
+    extensionMap["hpp"] = "C++ Header (.hpp, .hxx)";
+    extensionMap["hxx"] = "C++ Header (.hpp, .hxx)";
+    extensionMap["m"] = "Objective-C (.m)";
+    extensionMap["asm"] = "Assembly (.asm, .s)";
+    extensionMap["s"] = "Assembly (.asm, .s)";
+    extensionMap["rs"] = "Rust (.rs)";
+    extensionMap["go"] = "Go (.go)";
+    
+    // Scripting
+    extensionMap["py"] = "Python (.py)";
+    extensionMap["rb"] = "Ruby (.rb)";
+    extensionMap["pl"] = "Perl (.pl)";
+    extensionMap["lua"] = "Lua (.lua)";
+    extensionMap["sh"] = "Shell Script (.sh)";
+    extensionMap["bat"] = "Batch File (.bat, .cmd)";
+    extensionMap["cmd"] = "Batch File (.bat, .cmd)";
+    extensionMap["ps1"] = "PowerShell (.ps1)";
+    
+    // JVM Languages
+    extensionMap["java"] = "Java (.java)";
+    extensionMap["kt"] = "Kotlin (.kt)";
+    extensionMap["scala"] = "Scala (.scala)";
+    extensionMap["groovy"] = "Groovy (.groovy)";
+    
+    // .NET Languages
+    extensionMap["cs"] = "C# (.cs)";
+    extensionMap["vb"] = "Visual Basic (.vb)";
+    extensionMap["fs"] = "F# (.fs)";
+    
+    // Data & Config
+    extensionMap["yaml"] = "YAML (.yaml, .yml)";
+    extensionMap["yml"] = "YAML (.yaml, .yml)";
+    extensionMap["toml"] = "TOML (.toml)";
+    extensionMap["ini"] = "INI (.ini)";
+    extensionMap["csv"] = "CSV (.csv)";
+    extensionMap["md"] = "Markdown (.md)";
+    extensionMap["pro"] = "QT config file (.pro)";
+    
+    // Return the file type if found, otherwise return "Normal text file"
+    return extensionMap.value(extension, "Normal text file");
 }
 
 int main(int argc, char *argv[]) {
@@ -392,15 +546,181 @@ int main(int argc, char *argv[]) {
     QVBoxLayout mainlayout;
     QHBoxLayout buttonlayout;
     
+    currentTheme = applySystemTheme(app);
     ///adauga iconita la butoane mrog asta optional , dar adaug o coloana cu nr randului in stanga
     ///adauga in dreapta jos ca la notepad linia si caracterul la care te afli
     ///adauga optiuna/functionalitate de a da quick save gen daca am deschis un fisier cu load atunci cand dau save daca vede ca 
     ///exista deja fisieru sau nu stiu cum testezu dar sa nu mai intre in explorer ca sa faca fisier nou de fiecare data
     ///daca incearca sa inchida aplicatia sa intrebe daca vrea sa salveze modificarile
+    /// fa la save cand se deschide gui ala de save sa ai ca la notepad++ append extension si sa iti arate la numele fisierului
+    /// extensia acestuia
+    QStatusBar *statusBar = new QStatusBar(&window);
+    window.setStatusBar(statusBar);
+    
+    // Create labels for line, column, etc.
+    QWidget *spacer1 = new QWidget();
+    QWidget *spacer2 = new QWidget();
+    QWidget *spacer3 = new QWidget();
+    QWidget *spacer4 = new QWidget();
+    spacer1->setFixedWidth(10);
+    spacer2->setFixedWidth(10);
+    spacer3->setFixedWidth(10);
+    spacer4->setFixedWidth(10);
+    QPushButton *file_type = new QPushButton("Normal text file");
+    file_type->setFlat(true);
+    file_type->setCursor(Qt::PointingHandCursor);
+    QMenu *fileTypeMenu = new QMenu(file_type);
+    QAction *normalTextAction = fileTypeMenu->addAction("Normal text file");
+    fileTypeMenu->addSeparator();
+    QObject::connect(normalTextAction, &QAction::triggered, [file_type]() {
+        file_type->setText("Normal text file");
+    });
+    ///web dev
+    QMenu *webDevMenu = fileTypeMenu->addMenu("Web Development");
+    webDevMenu->addAction("HTML (.html, .htm)");
+    webDevMenu->addAction("CSS (.css)");
+    webDevMenu->addAction("JavaScript (.js)");
+    webDevMenu->addAction("TypeScript (.ts)");
+    webDevMenu->addAction("PHP (.php)");
+    webDevMenu->addAction("XML (.xml)");
+    webDevMenu->addAction("JSON (.json)");
+    ///limbaje de programare
+    QMenu *sysProgMenu = fileTypeMenu->addMenu("System Programming");
+    sysProgMenu->addAction("C (.c)");
+    sysProgMenu->addAction("C++ (.cpp, .cc, .cxx)");
+    sysProgMenu->addAction("C Header (.h)");
+    sysProgMenu->addAction("C++ Header (.hpp, .hxx)");
+    sysProgMenu->addAction("Objective-C (.m)");
+    sysProgMenu->addAction("Assembly (.asm, .s)");
+    sysProgMenu->addAction("Rust (.rs)");
+    sysProgMenu->addAction("Go (.go)");
+    ///limbaje de scripting
+    QMenu *scriptMenu = fileTypeMenu->addMenu("Scripting");
+    scriptMenu->addAction("Python (.py)");
+    scriptMenu->addAction("Ruby (.rb)");
+    scriptMenu->addAction("Perl (.pl)");
+    scriptMenu->addAction("Lua (.lua)");
+    scriptMenu->addAction("Shell Script (.sh)");
+    scriptMenu->addAction("Batch File (.bat, .cmd)");
+    scriptMenu->addAction("PowerShell (.ps1)");
+    ///jvm
+    QMenu *jvmMenu = fileTypeMenu->addMenu("JVM Languages");
+    jvmMenu->addAction("Java (.java)");
+    jvmMenu->addAction("Kotlin (.kt)");
+    jvmMenu->addAction("Scala (.scala)");
+    jvmMenu->addAction("Groovy (.groovy)");
+    ///limbaje .NET
+    QMenu *dotNetMenu = fileTypeMenu->addMenu("Microsoft .NET");
+    dotNetMenu->addAction("C# (.cs)");
+    dotNetMenu->addAction("Visual Basic (.vb)");
+    dotNetMenu->addAction("F# (.fs)");
+    ///config files
+    QMenu *dataMenu = fileTypeMenu->addMenu("Data & Config");
+    dataMenu->addAction("YAML (.yaml, .yml)");
+    dataMenu->addAction("TOML (.toml)");
+    dataMenu->addAction("INI (.ini)");
+    dataMenu->addAction("CSV (.csv)");
+    dataMenu->addAction("Markdown (.md)");
+    dataMenu->addAction("QT config file (.pro)");
+    file_type->setMenu(fileTypeMenu);
+    for (QAction* action : fileTypeMenu->actions()) {
+        if (!action->menu() && !action->isSeparator()) {
+            QObject::connect(action, &QAction::triggered, [file_type, action]() {
+                file_type->setText(action->text());
+            });
+        }
+    }
+    QList<QMenu*> submenus = fileTypeMenu->findChildren<QMenu*>();
+    for (QMenu* submenu : submenus) {
+        for (QAction* action : submenu->actions()) {
+            QObject::connect(action, &QAction::triggered, [file_type, action]() {
+                file_type->setText(action->text());
+            });
+        }
+    }
 
+    QLabel *char_line_label = new QLabel("Ln: 0  Col: 1");
+    QLabel *positionLabel = new QLabel("Ln: 1  Col: 1 Pos: 1");
+    QLabel *encodingLabel = new QLabel("UTF-8");
+    QPushButton *eolButton = new QPushButton("Windows (CRLF)");
+    eolButton->setFlat(true);
+    eolButton->setCursor(Qt::PointingHandCursor);
+    QMenu *eolMenu = new QMenu(eolButton);
+    eolMenu->addAction("Windows (CRLF)");
+    eolMenu->addAction("Unix (LF)");
+    eolMenu->addAction("Mac (CR)");
+    QFontMetrics fontMetrics(eolButton->font());
+    int width = fontMetrics.horizontalAdvance("Windows (CRLF)") + 20; // Add some padding
+    eolButton->setFixedWidth(width);
+    QPushButton *cursor_caret = new QPushButton("INS");
+    cursor_caret->setFlat(true);
+    cursor_caret->setCursor(Qt::PointingHandCursor); /// adauga chestia asta cu mana si la restul butoanelor din program
+    if(ostype == 1) {
+        eolButton->setText("Windows (CRLF)");
+        eolButton->setToolTip("Windows (CRLF)");
+        QString content = textEdit.toPlainText();
+        content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
+    }
+    else if(ostype == 2) {
+        eolButton->setText("Mac (CR)");
+        eolButton->setToolTip("Mac (CR)");
+        QString content = textEdit.toPlainText();
+        content.replace("\r\n", "\n").replace("\r", "\n");
+    }
+    else if(ostype == 3) {
+        eolButton->setText("Unix (LF)");
+        eolButton->setToolTip("Unix (LF)");
+        QString content = textEdit.toPlainText();
+        content.replace("\r\n", "\n").replace("\r", "\n");
+    }
+    
+    // Add labels to status bar
+    statusBar->addWidget(file_type);
+    statusBar->addPermanentWidget(char_line_label);
+    statusBar->addPermanentWidget(spacer1);
+    statusBar->addPermanentWidget(positionLabel);
+    statusBar->addPermanentWidget(spacer2);
+    statusBar->addPermanentWidget(encodingLabel);
+    statusBar->addPermanentWidget(spacer3);
+    statusBar->addPermanentWidget(eolButton);
+    statusBar->addPermanentWidget(spacer4);
+    statusBar->addPermanentWidget(cursor_caret);
+    
+    // Connect text cursor position changed signal to update the position label
+    QObject::connect(&textEdit, &QTextEdit::cursorPositionChanged, [positionLabel, &textEdit]() {
+        QTextCursor cursor = textEdit.textCursor();
+        int line = cursor.blockNumber() + 1;
+        int column = cursor.columnNumber() + 1;
+        int position = cursor.position() + 1;
+        positionLabel->setText(QString("Ln: %1  Col: %2 Pos: %3").arg(line).arg(column).arg(position));
+    });
+    QObject::connect(cursor_caret, &QPushButton::clicked, [cursor_caret, &textEdit]() {
+    // pt un motiv anume nu suporta cursor caretul pentru overwrite deci si overwriteul o sa il aiba pe ala de la insert
+        bool newMode = !textEdit.overwriteMode();
+        textEdit.setOverwriteMode(newMode);
+        cursor_caret->setText(newMode ? "OVR" : "INS");
+    });
+    QObject::connect(eolButton, &QPushButton::clicked, [eolButton, eolMenu]() {
+        eolMenu->exec(eolButton->mapToGlobal(QPoint(0, -eolMenu->sizeHint().height())));
+    });
+    QObject::connect(eolMenu->actions().at(0), &QAction::triggered, [eolButton, &textEdit]() {
+        eolButton->setText("Windows (CRLF)");
+        QString content = textEdit.toPlainText();
+        content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
+    });
+    QObject::connect(eolMenu->actions().at(1), &QAction::triggered, [eolButton, &textEdit]() {
+        eolButton->setText("Unix (LF)");
+        QString content = textEdit.toPlainText();
+        content.replace("\r\n", "\n").replace("\r", "\n");
+    });
+    QObject::connect(eolMenu->actions().at(2), &QAction::triggered, [eolButton, &textEdit]() {
+        eolButton->setText("Mac (CR)");
+        QString content = textEdit.toPlainText();
+        content.replace("\r\n", "\n").replace("\n", "\r");
+    });
 
     QObject::connect(&saveButton, &QPushButton::clicked, [&]() {
-        QString fileName = QFileDialog::getSaveFileName(&window, "Save as", "C:/", "Text Files (*.txt)");
+        QString fileName = QFileDialog::getSaveFileName(&window, "Save as", "D:/", "Text Files (*.txt)");
         if (!fileName.isEmpty()) {
             QFile file(fileName);
             if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -424,25 +744,42 @@ int main(int argc, char *argv[]) {
         }
     });
 
-    QObject::connect(&loadButton , &QPushButton::clicked, [&]()
-    {
+    QObject::connect(&loadButton, &QPushButton::clicked, [&]() {
         QString fileName = QFileDialog::getOpenFileName(&window, "Open File", "C:/", "All Files (*);;C++ files (*.cpp);;Text Files (*.txt)");
         if (!fileName.isEmpty()) {
             QFile file(fileName);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 QByteArray rawData = file.readAll();
-                text_lines_characters(rawData);
+                auto [lineCount, characterCount] = text_lines_characters(rawData);
                 QString content = QString::fromUtf8(rawData);
                 file.close();
                 textEdit.setPlainText(content);
-                currentFilePath = fileName; // <-- Save path
+                currentFilePath = fileName;
+                
+                // Update window title
                 if (currentFilePath.isEmpty()) {
                     window.setWindowTitle("Basic ahh Text Editor");
+                } else {
+                    if (ostype == 1) {
+                        currentFilePath.replace("/", "\\");
+                    }
+                    window.setWindowTitle(currentFilePath + " - Basic ahh Text Editor");
                 }
-                if (ostype == 1) {
-                    currentFilePath.replace("/", "\\");
+                
+                // Update line count label
+                char_line_label->setText(QString("length: %1  lines: %2").arg(characterCount).arg(lineCount));
+                
+                // Update file type button based on file extension
+                file_type->setText(detectFileType(fileName));
+                
+                // Also update EOL button based on content analysis
+                if (content.contains("\r\n")) {
+                    eolButton->setText("Windows (CRLF)");
+                } else if (content.contains("\r") && !content.contains("\n")) {
+                    eolButton->setText("Mac (CR)");
+                } else {
+                    eolButton->setText("Unix (LF)");
                 }
-                window.setWindowTitle(currentFilePath + " - Basic ahh Text Editor");
             } else {
                 QMessageBox::warning(&window, "Error", "Could not open file for reading.");
             }
@@ -461,13 +798,12 @@ int main(int argc, char *argv[]) {
     /// toate border-radius o sa aiba valoarea lor modificata cu text edit
     /// fa sa se mareasca interfata cand apar text lineurile
     /// adauga un buton apply la final si de reset si de close
-    ///adauga o modalitate sa salveze ultimele fisiere pe care le ai avut deschise sa le deschida instant si setarile pe care le a ales(ex sia facut tema custom)
+    ///adauga o modalitate sa salveze ultimele fisiere pe care le ai avut deschise sa le deschida instant si setarile pe care le ales(ex sia facut tema custom)
     QObject::connect(&settingsButton, &QPushButton::clicked, [&]()
     {
         settings(window, app);
     });
 
-    applySystemTheme(app);
     buttonlayout.addWidget(&saveButton);
     buttonlayout.addWidget(&loadButton);
     buttonlayout.addWidget(&settingsButton);
