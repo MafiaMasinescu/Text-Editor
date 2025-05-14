@@ -450,13 +450,13 @@ void settings(QMainWindow &window, QApplication &app) {
     ///adauga un buton de reset la setari ca sa revina la default
 }
 
-QString detectFileType(const QString& filePath) {
-    QFileInfo fileInfo(filePath);
-    QString extension = fileInfo.suffix().toLower();
-    
+// Global extension map (declare near the top of your file, after includes)
+QMap<QString, QString> extensionMap;
+QMap<QString, QPair<QString, QString>> fileTypeFilterMap;
+
+// Initialize the maps (call this before main or at the start of main)
+void initializeFileMaps() {
     // Map of extensions to file types
-    QMap<QString, QString> extensionMap;
-    
     // Text files
     extensionMap["txt"] = "Text Document (.txt)";
     extensionMap["log"] = "Log File (.log)";
@@ -515,12 +515,66 @@ QString detectFileType(const QString& filePath) {
     extensionMap["md"] = "Markdown (.md)";
     extensionMap["pro"] = "QT config file (.pro)";
     
+    // Map file types to filter strings and default extensions
+    fileTypeFilterMap["Text Document (.txt)"] = qMakePair(QString("Text Files (*.txt);;All Files (*)"), QString(".txt"));
+    fileTypeFilterMap["Log File (.log)"] = qMakePair(QString("Log Files (*.log);;All Files (*)"), QString(".log"));
+    
+    fileTypeFilterMap["HTML (.html, .htm)"] = qMakePair(QString("HTML Files (*.html *.htm);;All Files (*)"), QString(".html"));
+    fileTypeFilterMap["CSS (.css)"] = qMakePair(QString("CSS Files (*.css);;All Files (*)"), QString(".css"));
+    fileTypeFilterMap["JavaScript (.js)"] = qMakePair(QString("JavaScript Files (*.js);;All Files (*)"), QString(".js"));
+    fileTypeFilterMap["TypeScript (.ts)"] = qMakePair(QString("TypeScript Files (*.ts);;All Files (*)"), QString(".ts"));
+    fileTypeFilterMap["PHP (.php)"] = qMakePair(QString("PHP Files (*.php);;All Files (*)"), QString(".php"));
+    fileTypeFilterMap["XML (.xml)"] = qMakePair(QString("XML Files (*.xml);;All Files (*)"), QString(".xml"));
+    fileTypeFilterMap["JSON (.json)"] = qMakePair(QString("JSON Files (*.json);;All Files (*)"), QString(".json"));
+    
+    fileTypeFilterMap["C (.c)"] = qMakePair(QString("C Files (*.c);;All Files (*)"), QString(".c"));
+    fileTypeFilterMap["C++ (.cpp, .cc, .cxx)"] = qMakePair(QString("C++ Files (*.cpp *.cc *.cxx);;All Files (*)"), QString(".cpp"));
+    fileTypeFilterMap["C Header (.h)"] = qMakePair(QString("C Header Files (*.h);;All Files (*)"), QString(".h"));
+    fileTypeFilterMap["C++ Header (.hpp, .hxx)"] = qMakePair(QString("C++ Header Files (*.hpp *.hxx);;All Files (*)"), QString(".hpp"));
+    fileTypeFilterMap["Objective-C (.m)"] = qMakePair(QString("Objective-C Files (*.m);;All Files (*)"), QString(".m"));
+    fileTypeFilterMap["Assembly (.asm, .s)"] = qMakePair(QString("Assembly Files (*.asm *.s);;All Files (*)"), QString(".asm"));
+    fileTypeFilterMap["Rust (.rs)"] = qMakePair(QString("Rust Files (*.rs);;All Files (*)"), QString(".rs"));
+    fileTypeFilterMap["Go (.go)"] = qMakePair(QString("Go Files (*.go);;All Files (*)"), QString(".go"));
+    
+    fileTypeFilterMap["Python (.py)"] = qMakePair(QString("Python Files (*.py);;All Files (*)"), QString(".py"));
+    fileTypeFilterMap["Ruby (.rb)"] = qMakePair(QString("Ruby Files (*.rb);;All Files (*)"), QString(".rb"));
+    fileTypeFilterMap["Perl (.pl)"] = qMakePair(QString("Perl Files (*.pl);;All Files (*)"), QString(".pl"));
+    fileTypeFilterMap["Lua (.lua)"] = qMakePair(QString("Lua Files (*.lua);;All Files (*)"), QString(".lua"));
+    fileTypeFilterMap["Shell Script (.sh)"] = qMakePair(QString("Shell Script Files (*.sh);;All Files (*)"), QString(".sh"));
+    fileTypeFilterMap["Batch File (.bat, .cmd)"] = qMakePair(QString("Batch Files (*.bat *.cmd);;All Files (*)"), QString(".bat"));
+    fileTypeFilterMap["PowerShell (.ps1)"] = qMakePair(QString("PowerShell Files (*.ps1);;All Files (*)"), QString(".ps1"));
+    
+    fileTypeFilterMap["Java (.java)"] = qMakePair(QString("Java Files (*.java);;All Files (*)"), QString(".java"));
+    fileTypeFilterMap["Kotlin (.kt)"] = qMakePair(QString("Kotlin Files (*.kt);;All Files (*)"), QString(".kt"));
+    fileTypeFilterMap["Scala (.scala)"] = qMakePair(QString("Scala Files (*.scala);;All Files (*)"), QString(".scala"));
+    fileTypeFilterMap["Groovy (.groovy)"] = qMakePair(QString("Groovy Files (*.groovy);;All Files (*)"), QString(".groovy"));
+    
+    fileTypeFilterMap["C# (.cs)"] = qMakePair(QString("C# Files (*.cs);;All Files (*)"), QString(".cs"));
+    fileTypeFilterMap["Visual Basic (.vb)"] = qMakePair(QString("Visual Basic Files (*.vb);;All Files (*)"), QString(".vb"));
+    fileTypeFilterMap["F# (.fs)"] = qMakePair(QString("F# Files (*.fs);;All Files (*)"), QString(".fs"));
+    
+    fileTypeFilterMap["YAML (.yaml, .yml)"] = qMakePair(QString("YAML Files (*.yaml *.yml);;All Files (*)"), QString(".yaml"));
+    fileTypeFilterMap["TOML (.toml)"] = qMakePair(QString("TOML Files (*.toml);;All Files (*)"), QString(".toml"));
+    fileTypeFilterMap["INI (.ini)"] = qMakePair(QString("INI Files (*.ini);;All Files (*)"), QString(".ini"));
+    fileTypeFilterMap["CSV (.csv)"] = qMakePair(QString("CSV Files (*.csv);;All Files (*)"), QString(".csv"));
+    fileTypeFilterMap["Markdown (.md)"] = qMakePair(QString("Markdown Files (*.md);;All Files (*)"), QString(".md"));
+    fileTypeFilterMap["QT config file (.pro)"] = qMakePair(QString("QT Project Files (*.pro);;All Files (*)"), QString(".pro"));
+}
+
+QString detectFileType(const QString& filePath) {
+    QFileInfo fileInfo(filePath);
+    QString extension = fileInfo.suffix().toLower();
+    
     // Return the file type if found, otherwise return "Normal text file"
     return extensionMap.value(extension, "Normal text file");
 }
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
+    
+    // Initialize file type maps
+    initializeFileMaps();
+    
     QMainWindow window;    
     window.setWindowIcon(QIcon(":/icon.png"));
     window.setWindowTitle("Basic ahh Text Editor");
@@ -720,24 +774,46 @@ int main(int argc, char *argv[]) {
     });
 
     QObject::connect(&saveButton, &QPushButton::clicked, [&]() {
-        QString fileName = QFileDialog::getSaveFileName(&window, "Save as", "D:/", "Text Files (*.txt)");
+        QString currentType = file_type->text();
+        QString filter = "All Files (*)";
+        QString defaultExt = "";
+        
+        // Get filter and default extension for current file type
+        if (fileTypeFilterMap.contains(currentType)) {
+            filter = fileTypeFilterMap[currentType].first;
+            defaultExt = fileTypeFilterMap[currentType].second;
+        }
+        
+        QString fileName = QFileDialog::getSaveFileName(&window, "Save as", "D:/", filter);
+
         if (!fileName.isEmpty()) {
+            // Add default extension if none provided and we have a default
+            if (!defaultExt.isEmpty() && !fileName.contains(".")) {
+                fileName += defaultExt;
+            }
+            
             QFile file(fileName);
             if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
                 QString content = textEdit.toPlainText();
-            
-                // Convert to OS-appropriate line endings before saving
-                if (ostype == 1) { // Windows
-                    // Ensure all line endings are CRLF
+                
+                // Convert to appropriate line endings before saving
+                QString eolFormat = eolButton->text();
+                if (eolFormat == "Windows (CRLF)") {
                     content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
-                } else { 
-                    // macOS or Linux - ensure all are LF
+                } else if (eolFormat == "Mac (CR)") {
+                    content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r");
+                } else { // Unix (LF)
                     content.replace("\r\n", "\n").replace("\r", "\n");
                 }
                 
                 QTextStream out(&file);
                 out << content;
                 file.close();
+                currentFilePath = fileName;
+                if (ostype == 1) {
+                    currentFilePath.replace("/", "\\");
+                }
+                window.setWindowTitle(currentFilePath + " - Basic ahh Text Editor");
             } else {
                 QMessageBox::warning(&window, "Error", "Could not write to file.");
             }
@@ -771,15 +847,6 @@ int main(int argc, char *argv[]) {
                 
                 // Update file type button based on file extension
                 file_type->setText(detectFileType(fileName));
-                
-                // Also update EOL button based on content analysis
-                if (content.contains("\r\n")) {
-                    eolButton->setText("Windows (CRLF)");
-                } else if (content.contains("\r") && !content.contains("\n")) {
-                    eolButton->setText("Mac (CR)");
-                } else {
-                    eolButton->setText("Unix (LF)");
-                }
             } else {
                 QMessageBox::warning(&window, "Error", "Could not open file for reading.");
             }
