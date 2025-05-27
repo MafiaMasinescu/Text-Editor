@@ -166,35 +166,6 @@ QString createStyleSheet(const Theme& theme, int borderRadius = 6) {
             color: %2;
             font-size: 14px;
         }
-        /* Tab Bar Styling */
-        QTabBar {
-            background-color: %1;
-            color: %2;
-        }
-        QTabBar::tab {
-            background-color: %3;
-            color: %2;
-            border: 1px solid %4;
-            border-bottom: none;
-            padding: 6px 10px;
-            margin-right: 2px;
-            border-top-left-radius: %9px;
-            border-top-right-radius: %9px;
-        }
-        QTabBar::tab:selected {
-            background-color: %5;
-            border-bottom: none;
-        }
-        QTabBar::tab:hover:!selected {
-            background-color: %5;
-        }
-        QTabBar::close-button {
-            image: url(:/close.png);
-            subcontrol-position: center;
-        }
-        QTabBar::close-button:hover {
-            background-color: %5;
-        }
         QTextEdit {
             background-color: %6;
             color: %2;
@@ -372,8 +343,6 @@ void eof_save(QTextEdit &textEdit) {
         content.replace("\r\n", "\n").replace("\r", "\n");
     }
 }
-
-
 /// nu o sa ma angajeze nimeni vreodata daca programez totul intro singur fisier da nah am vrut si eu sa ma distrez o data
 Theme currentTheme;
 void settings(QMainWindow &window, QApplication &app) {
@@ -558,9 +527,6 @@ void initializeFileMaps() {
     extensionMap["pro"] = "QT config file (.pro)";
     
     // Map file types to filter strings and default extensions
-    // Add entry for "Normal text file"
-    fileTypeFilterMap["Normal text file"] = qMakePair(QString("Text Files (*.txt);;All Files (*)"), QString(".txt"));
-    
     fileTypeFilterMap["Text Document (.txt)"] = qMakePair(QString("Text Files (*.txt);;All Files (*)"), QString(".txt"));
     fileTypeFilterMap["Log File (.log)"] = qMakePair(QString("Log Files (*.log);;All Files (*)"), QString(".log"));
     
@@ -711,15 +677,6 @@ public:
         return 20 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
     }
     
-    // Add this public method to force a complete refresh
-    void forceLineNumberUpdate() {
-        // Force a complete redraw of the line number area
-        QResizeEvent e(size(), size());
-        resizeEvent(&e);
-        viewport()->update();
-        lineNumberArea->update();
-    }
-    
 protected:
     void resizeEvent(QResizeEvent *event) override {
         QTextEdit::resizeEvent(event);
@@ -811,67 +768,13 @@ int main(int argc, char *argv[]) {
     // Initialize file type maps
     initializeFileMaps();
     
-    // Create a main window without subclassing
-    QMainWindow window;
-    window.setAttribute(Qt::WA_QuitOnClose, false);
+    QMainWindow window;    
     window.setWindowIcon(QIcon(":/icon.png"));
     window.setWindowTitle("Basic ahh Text Editor");
 
-    // Create menu bar
-    QMenuBar *upper_menuBar = new QMenuBar(&window);
-    window.setMenuBar(upper_menuBar);
-    
-    // File menu
-    QMenu *upper_fileMenu = upper_menuBar->addMenu("File");
-    QAction *upper_newAction = new QAction("New", &window);
-    QAction *upper_openAction = new QAction("Open", &window);
-    QAction *upper_saveAction = new QAction("Save", &window);
-    QAction *upper_saveAsAction = new QAction("Save As", &window);
-    QAction *upper_closeAction = new QAction("Close", &window);
-    QAction *upper_closeAllAction = new QAction("Close All", &window);
-    QAction *upper_exitAction = new QAction("Exit", &window);
-
-    // Set shortcuts
-    upper_newAction->setShortcut(QKeySequence("Ctrl+N"));
-    upper_openAction->setShortcut(QKeySequence("Ctrl+O"));
-    upper_saveAction->setShortcut(QKeySequence("Ctrl+S"));
-    upper_saveAsAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
-    upper_closeAction->setShortcut(QKeySequence("Ctrl+W"));
-    upper_closeAllAction->setShortcut(QKeySequence("Ctrl+Shift+W"));
-    upper_exitAction->setShortcut(QKeySequence("Ctrl+Q"));
-
-    // Add actions to file menu
-    upper_fileMenu->addAction(upper_newAction);
-    upper_fileMenu->addAction(upper_openAction);
-    upper_fileMenu->addAction(upper_saveAction);
-    upper_fileMenu->addAction(upper_saveAsAction);
-    upper_fileMenu->addAction(upper_closeAction);
-    upper_fileMenu->addAction(upper_closeAllAction);
-    upper_fileMenu->addSeparator();
-    upper_fileMenu->addAction(upper_exitAction);
-
-    // Settings menu
-    QMenu *upper_settingsMenu = upper_menuBar->addMenu("Settings");
-    QAction *upper_settingsAction = new QAction("Settings", &window);
-    upper_settingsMenu->addAction(upper_settingsAction);
-
-    // Help menu
-    QMenu *upper_helpMenu = upper_menuBar->addMenu("Help");
-    QAction *upper_helpAction = new QAction("Help", &window);
-    upper_helpMenu->addAction(upper_helpAction);
-
-    // Connect menu actions
-
     QString currentFilePath = "";
-    
-    // Change this: Don't use stack-allocated textEdit
-    // LineNumberTextEdit textEdit;
-    // textEdit.setPlaceholderText("Start writting !");
-    
-    // Instead, create the first editor dynamically like the others
-    LineNumberTextEdit* firstEditor = new LineNumberTextEdit();
-    firstEditor->setPlaceholderText("Start writting !");
-    
+    LineNumberTextEdit textEdit;
+    textEdit.setPlaceholderText("Start writting !");
     QPushButton saveButton("Save");
     QPushButton loadButton("Load");
     QPushButton settingsButton("Settings");
@@ -893,23 +796,73 @@ int main(int argc, char *argv[]) {
     currentTheme = applySystemTheme(app);
     FileTabBar *fileTabBar = new FileTabBar();
     QStackedWidget *textEditStack = new QStackedWidget();
-    
-    // Change this: Add the dynamically created editor
-    textEditStack->addWidget(firstEditor);
+    textEditStack->addWidget(&textEdit);
     int firstTab = fileTabBar->addTab("New File 🔵");
     tabToFilePath[firstTab] = "";
     tabModified[firstTab] = false;
-    
-    // Connect text changed signal for the first editor
-    QObject::connect(firstEditor, &QTextEdit::textChanged, [fileTabBar, firstTab, &tabModified]() {
-        if (!tabModified[firstTab]) {
-            tabModified[firstTab] = true;
-            QString tabText = fileTabBar->tabText(firstTab);
-            tabText.replace("🔵", "🔴");
-            fileTabBar->setTabText(firstTab, tabText);
+    QObject::connect(fileTabBar, &QTabBar::currentChanged, [textEditStack](int index) {
+        if (index >= 0) {
+            textEditStack->setCurrentIndex(index);
         }
     });
-    
+    QObject::connect(fileTabBar, &QTabBar::tabCloseRequested, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified](int index) {
+        // Check if file is modified
+        if (tabModified[index]) {
+            QMessageBox msgBox(&window);
+            msgBox.setText("The document has been modified.");
+            msgBox.setInformativeText("Do you want to save your changes?");
+            msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+            msgBox.setDefaultButton(QMessageBox::Save);
+            int ret = msgBox.exec();
+            
+            switch (ret) {
+                case QMessageBox::Save:
+                    // Save logic would go here
+                    break;
+                case QMessageBox::Cancel:
+                    return;
+                default:
+                    break;
+            }
+        }
+                QWidget *widget = textEditStack->widget(index);
+        textEditStack->removeWidget(widget);
+        delete widget;
+        
+        fileTabBar->removeTab(index);
+        
+        // Update maps
+        for (int i = index; i < fileTabBar->count(); i++) {
+            tabToFilePath[i] = tabToFilePath[i+1];
+            tabModified[i] = tabModified[i+1];
+        }
+        tabToFilePath.remove(fileTabBar->count());
+        tabModified.remove(fileTabBar->count());
+        
+        // If no tabs left, create a new one
+        if (fileTabBar->count() == 0) {
+            LineNumberTextEdit *newEditor = new LineNumberTextEdit();
+            newEditor->setPlaceholderText("Hai la o cafea");
+            textEditStack->addWidget(newEditor);
+            int newTab = fileTabBar->addTab("New File 🔵");
+            tabToFilePath[newTab] = "";
+            tabModified[newTab] = false;
+        }
+        
+        // Update window title
+        int currentIndex = fileTabBar->currentIndex();
+        if (currentIndex >= 0) {
+            QString filePath = tabToFilePath[currentIndex];
+            if (filePath.isEmpty()) {
+                window.setWindowTitle("Basic ahh Text Editor");
+            } else {
+                if (ostype == 1) {
+                    filePath.replace("/", "\\");
+                }
+                window.setWindowTitle(filePath + " - Basic ahh Text Editor");
+            }
+        }
+    });
     fileTabBar->onEmptyAreaDoubleClicked = [fileTabBar, textEditStack, &tabToFilePath, &tabModified]() {
         LineNumberTextEdit *newEditor = new LineNumberTextEdit();
         newEditor->setPlaceholderText("Hai la o cafea");
@@ -919,16 +872,6 @@ int main(int argc, char *argv[]) {
         tabModified[newTab] = false;
         fileTabBar->setCurrentIndex(newTab);
         textEditStack->setCurrentIndex(newTab);
-        
-        // Connect text changed signal for the new editor
-        QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
-            if (!tabModified[newTab]) {
-                tabModified[newTab] = true;
-                QString tabText = fileTabBar->tabText(newTab);
-                tabText.replace("🔵", "🔴");
-                fileTabBar->setTabText(newTab, tabText);
-            }
-        });
     };
     ///adauga iconita la butoane mrog asta optional , dar adaug o coloana cu nr randului in stanga
     ///adauga in dreapta jos ca la notepad linia si caracterul la care te afli
@@ -1041,124 +984,22 @@ int main(int argc, char *argv[]) {
     if(ostype == 1) {
         eolButton->setText("Windows (CRLF)");
         eolButton->setToolTip("Windows (CRLF)");
-        QString content = firstEditor->toPlainText();
+        QString content = textEdit.toPlainText();
         content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
     }
     else if(ostype == 2) {
         eolButton->setText("Mac (CR)");
         eolButton->setToolTip("Mac (CR)");
-        QString content = firstEditor->toPlainText();
+        QString content = textEdit.toPlainText();
         content.replace("\r\n", "\n").replace("\r", "\n");
     }
     else if(ostype == 3) {
         eolButton->setText("Unix (LF)");
         eolButton->setToolTip("Unix (LF)");
-        QString content = firstEditor->toPlainText();
+        QString content = textEdit.toPlainText();
         content.replace("\r\n", "\n").replace("\r", "\n");
     }
     
-    QObject::connect(fileTabBar, &QTabBar::currentChanged, [textEditStack, &tabToFilePath, file_type, &window](int index) {
-        if (index >= 0) {
-            textEditStack->setCurrentIndex(index);
-            
-            // Update file type indicator based on the current tab's file path
-            QString filePath = tabToFilePath[index];
-            if (!filePath.isEmpty()) {
-                file_type->setText(detectFileType(filePath));
-                // Update window title with current file path
-                if (ostype == 1) {
-                    filePath.replace("/", "\\");
-                }
-                window.setWindowTitle(filePath + " - Basic ahh Text Editor");
-            } else {
-                file_type->setText("Normal text file");
-                window.setWindowTitle("Basic ahh Text Editor");
-            }
-        }
-    });
-    QObject::connect(fileTabBar, &QTabBar::tabCloseRequested, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, file_type](int index) {
-        // Check if file is modified
-        if (tabModified[index]) {
-            QMessageBox msgBox(&window);
-            msgBox.setText("The document has been modified.");
-            msgBox.setInformativeText("Do you want to save your changes?");
-            msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-            msgBox.setDefaultButton(QMessageBox::Save);
-            int ret = msgBox.exec();
-            
-            switch (ret) {
-                case QMessageBox::Save:
-                    // Save logic would go here
-                    break;
-                case QMessageBox::Cancel:
-                    qDebug()<< "aplicatia se va inchide cred aici";
-                    return;
-                default:
-                    break;
-            }
-        }
-        
-        // Store the current index before removing the tab
-        int currentIndex = fileTabBar->currentIndex();
-        
-        QWidget *widget = textEditStack->widget(index);
-        textEditStack->removeWidget(widget);
-        qDebug() << "aplicatia nu sa inchis inca";
-        delete widget;
-        qDebug() << "aplicatia nu sa inchis inca 2";
-        
-        fileTabBar->removeTab(index);
-        
-        // Update maps
-        for (int i = index; i < fileTabBar->count(); i++) {
-            tabToFilePath[i] = tabToFilePath[i+1];
-            tabModified[i] = tabModified[i+1];
-        }
-        tabToFilePath.remove(fileTabBar->count());
-        tabModified.remove(fileTabBar->count());
-        
-        // If no tabs left, create a new one
-        if (fileTabBar->count() == 0) {
-            LineNumberTextEdit *newEditor = new LineNumberTextEdit();
-            newEditor->setPlaceholderText("Hai la o cafea");
-            textEditStack->addWidget(newEditor);
-            int newTab = fileTabBar->addTab("New File 🔵");
-            tabToFilePath[newTab] = "";
-            tabModified[newTab] = false;
-            
-            // Connect text changed signal for the new editor
-            QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
-                if (!tabModified[newTab]) {
-                    tabModified[newTab] = true;
-                    QString tabText = fileTabBar->tabText(newTab);
-                    tabText.replace("🔵", "🔴");
-                    fileTabBar->setTabText(newTab, tabText);
-                }
-            });
-            
-            fileTabBar->setCurrentIndex(newTab);
-        } else if (currentIndex == index) {
-            // If we closed the current tab, select the next tab (or the previous if we closed the last tab)
-            int newIndex = (index < fileTabBar->count()) ? index : fileTabBar->count() - 1;
-            fileTabBar->setCurrentIndex(newIndex);
-        }
-        
-        // Update window title and file type
-        int newCurrentIndex = fileTabBar->currentIndex();
-        if (newCurrentIndex >= 0) {
-            QString filePath = tabToFilePath[newCurrentIndex];
-            if (filePath.isEmpty()) {
-                window.setWindowTitle("Basic ahh Text Editor");
-                file_type->setText("Normal text file");
-            } else {
-                if (ostype == 1) {
-                    filePath.replace("/", "\\");
-                }
-                window.setWindowTitle(filePath + " - Basic ahh Text Editor");
-                file_type->setText(detectFileType(filePath));
-            }
-        }
-    });
     // Add labels to status bar
     statusBar->addWidget(file_type);
     statusBar->addPermanentWidget(char_line_label);
@@ -1172,40 +1013,40 @@ int main(int argc, char *argv[]) {
     statusBar->addPermanentWidget(cursor_caret);
     
     // Connect text cursor position changed signal to update the position label
-    QObject::connect(firstEditor, &QTextEdit::cursorPositionChanged, [positionLabel, firstEditor]() {
-        QTextCursor cursor = firstEditor->textCursor();
+    QObject::connect(&textEdit, &QTextEdit::cursorPositionChanged, [positionLabel, &textEdit]() {
+        QTextCursor cursor = textEdit.textCursor();
         int line = cursor.blockNumber() + 1;
         int column = cursor.columnNumber() + 1;
         int position = cursor.position() + 1;
         positionLabel->setText(QString("Ln: %1  Col: %2 Pos: %3").arg(line).arg(column).arg(position));
     });
-    QObject::connect(cursor_caret, &QPushButton::clicked, [cursor_caret, firstEditor]() {
-        bool newMode = !firstEditor->overwriteMode();
-        firstEditor->setOverwriteMode(newMode);
+    QObject::connect(cursor_caret, &QPushButton::clicked, [cursor_caret, &textEdit]() {
+    // pt un motiv anume nu suporta cursor caretul pentru overwrite deci si overwriteul o sa il aiba pe ala de la insert
+        bool newMode = !textEdit.overwriteMode();
+        textEdit.setOverwriteMode(newMode);
         cursor_caret->setText(newMode ? "OVR" : "INS");
     });
     QObject::connect(eolButton, &QPushButton::clicked, [eolButton, eolMenu]() {
         eolMenu->exec(eolButton->mapToGlobal(QPoint(0, -eolMenu->sizeHint().height())));
     });
-    QObject::connect(eolMenu->actions().at(0), &QAction::triggered, [eolButton, firstEditor]() {
+    QObject::connect(eolMenu->actions().at(0), &QAction::triggered, [eolButton, &textEdit]() {
         eolButton->setText("Windows (CRLF)");
-        QString content = firstEditor->toPlainText();
+        QString content = textEdit.toPlainText();
         content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
     });
-    QObject::connect(eolMenu->actions().at(1), &QAction::triggered, [eolButton, firstEditor]() {
+    QObject::connect(eolMenu->actions().at(1), &QAction::triggered, [eolButton, &textEdit]() {
         eolButton->setText("Unix (LF)");
-        QString content = firstEditor->toPlainText();
+        QString content = textEdit.toPlainText();
         content.replace("\r\n", "\n").replace("\r", "\n");
     });
-    QObject::connect(eolMenu->actions().at(2), &QAction::triggered, [eolButton, firstEditor]() {
+    QObject::connect(eolMenu->actions().at(2), &QAction::triggered, [eolButton, &textEdit]() {
         eolButton->setText("Mac (CR)");
-        QString content = firstEditor->toPlainText();
+        QString content = textEdit.toPlainText();
         content.replace("\r\n", "\n").replace("\n", "\r");
     });
 
     QObject::connect(&saveButton, &QPushButton::clicked, 
         [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, eolButton, file_type, &currentFilePath]() {
-            // Use the current editor from the stack instead of textEdit
             int currentIndex = fileTabBar->currentIndex();
             if (currentIndex < 0) return;
             
@@ -1214,7 +1055,7 @@ int main(int argc, char *argv[]) {
             
             QString filePath = tabToFilePath[currentIndex];
             if (filePath.isEmpty()) {
-                // Get current file type from status bar
+                // No file path, use save as dialog
                 QString currentType = file_type->text();
                 QString filter = "All Files (*)";
                 QString defaultExt = "";
@@ -1239,25 +1080,15 @@ int main(int argc, char *argv[]) {
                 // Use currentEditor instead of textEdit
                 QString content = currentEditor->toPlainText();
                 
-                // COMMENTED OUT: EOL conversion
-                /*
                 // Convert to appropriate line endings before saving
                 QString eolFormat = eolButton->text();
                 if (eolFormat == "Windows (CRLF)") {
-                    // First normalize all line endings to LF
-                    content.replace("\r\n", "\n").replace("\r", "\n");
-                    // Then convert to CRLF
-                    content.replace("\n", "\r\n");
+                    content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r\n");
                 } else if (eolFormat == "Mac (CR)") {
-                    // First normalize all line endings to LF
-                    content.replace("\r\n", "\n").replace("\r", "\n");
-                    // Then convert to CR
-                    content.replace("\n", "\r");
+                    content.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\r");
                 } else { // Unix (LF)
-                    // Just normalize to LF
                     content.replace("\r\n", "\n").replace("\r", "\n");
                 }
-                */
                 
                 QTextStream out(&file);
                 out << content;
@@ -1283,68 +1114,62 @@ int main(int argc, char *argv[]) {
             }
         });
 
-    QObject::connect(&saveAction, &QAction::triggered, &saveButton, &QPushButton::click);    
-
-    QObject::connect(&loadButton, &QPushButton::clicked, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, &currentFilePath, file_type, char_line_label]() {
-        QString fileName = QFileDialog::getOpenFileName(&window, "Open File", "C:/", 
-            "All Files (*);;C++ files (*.cpp);;Text Files (*.txt)");
-        if (fileName.isEmpty()) return;
-        
-        QFile file(fileName);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QByteArray rawData = file.readAll();
-            auto [lineCount, characterCount] = text_lines_characters(rawData);
-            QString content = QString::fromUtf8(rawData);
-            file.close();
+    QObject::connect(&loadButton, &QPushButton::clicked, 
+        [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, &currentFilePath, file_type, char_line_label]() {
+            QString fileName = QFileDialog::getOpenFileName(&window, "Open File", "C:/", 
+                "All Files (*);;C++ files (*.cpp);;Text Files (*.txt)");
+            if (fileName.isEmpty()) return;
             
-            // Create new tab
-            LineNumberTextEdit *newEditor = new LineNumberTextEdit();
-            textEditStack->addWidget(newEditor);
-            
-            // Get file name from path
-            QFileInfo fileInfo(fileName);
-            QString baseName = fileInfo.fileName();
-            
-            int newTab = fileTabBar->addTab(baseName + " 🔵");
-            tabToFilePath[newTab] = fileName;
-            tabModified[newTab] = false;
-            
-            // Set the content AFTER adding to tab bar and setting up tab info
-            newEditor->setPlainText(content);
-            
-            // Force line number update
-            newEditor->forceLineNumberUpdate();
-            
-            // Connect text changed signal
-            QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
-                if (!tabModified[newTab]) {
-                    tabModified[newTab] = true;
-                    QString tabText = fileTabBar->tabText(newTab);
-                    tabText.replace("🔵", "🔴");
-                    fileTabBar->setTabText(newTab, tabText);
+            QFile file(fileName);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QByteArray rawData = file.readAll();
+                auto [lineCount, characterCount] = text_lines_characters(rawData);
+                QString content = QString::fromUtf8(rawData);
+                file.close();
+                
+                // Create new tab
+                LineNumberTextEdit *newEditor = new LineNumberTextEdit();
+                newEditor->setPlainText(content);
+                textEditStack->addWidget(newEditor);
+                
+                // Get file name from path
+                QFileInfo fileInfo(fileName);
+                QString baseName = fileInfo.fileName();
+                
+                int newTab = fileTabBar->addTab(baseName + " 🔵");
+                tabToFilePath[newTab] = fileName;
+                tabModified[newTab] = false;
+                
+                // Connect text changed signal
+                QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
+                    if (!tabModified[newTab]) {
+                        tabModified[newTab] = true;
+                        QString tabText = fileTabBar->tabText(newTab);
+                        tabText.replace("🔵", "🔴");
+                        fileTabBar->setTabText(newTab, tabText);
+                    }
+                });
+                
+                // Select the new tab
+                fileTabBar->setCurrentIndex(newTab);
+                textEditStack->setCurrentIndex(newTab);
+                
+                // Update currentFilePath and window title
+                currentFilePath = fileName;
+                if (ostype == 1) {
+                    currentFilePath.replace("/", "\\");
                 }
-            });
-            
-            // Select the new tab
-            fileTabBar->setCurrentIndex(newTab);
-            textEditStack->setCurrentIndex(newTab);
-            
-            // Update currentFilePath and window title
-            currentFilePath = fileName;
-            if (ostype == 1) {
-                currentFilePath.replace("/", "\\");
+                window.setWindowTitle(currentFilePath + " - Basic ahh Text Editor");
+                
+                // Update line count label
+                char_line_label->setText(QString("length: %1  lines: %2").arg(characterCount).arg(lineCount));
+                
+                // Update file type button based on file extension
+                file_type->setText(detectFileType(fileName));
+            } else {
+                QMessageBox::warning(&window, "Error", "Could not open file for reading.");
             }
-            window.setWindowTitle(currentFilePath + " - Basic ahh Text Editor");
-            
-            // Update line count label
-            char_line_label->setText(QString("length: %1  lines: %2").arg(characterCount).arg(lineCount));
-            
-            // Update file type button based on file extension
-            file_type->setText(detectFileType(fileName));
-        } else {
-            QMessageBox::warning(&window, "Error", "Could not open file for reading.");
-        }
-    });
+        });
 
     settingsButton.setToolTip("Settings");
     settingsButton.setText("⚙️");
@@ -1370,7 +1195,7 @@ int main(int argc, char *argv[]) {
     {
         settings(window, app);
     });
-    ///LineNumberTextEdit* firstEditor = static_cast<LineNumberTextEdit*>(textEditStack->widget(0));
+    LineNumberTextEdit* firstEditor = static_cast<LineNumberTextEdit*>(textEditStack->widget(0));
     textEditStack->addWidget(firstEditor);
     if (firstEditor) {
         QObject::connect(firstEditor, &QTextEdit::textChanged, [fileTabBar, &tabModified]() {
@@ -1383,230 +1208,6 @@ int main(int argc, char *argv[]) {
             }
         });
     }
-
-    ///upper menu actions
-    QObject::connect(upper_newAction, &QAction::triggered, [fileTabBar, textEditStack, &tabToFilePath, &tabModified]() {
-        LineNumberTextEdit *newEditor = new LineNumberTextEdit();
-        newEditor->setPlaceholderText("Start writing!");
-        textEditStack->addWidget(newEditor);
-        int newTab = fileTabBar->addTab("New File 🔵");
-        tabToFilePath[newTab] = "";
-        tabModified[newTab] = false;
-        fileTabBar->setCurrentIndex(newTab);
-        textEditStack->setCurrentIndex(newTab);
-        // Connect text changed signal for the new editor
-        QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
-            if (!tabModified[newTab]) {
-                tabModified[newTab] = true;
-                QString tabText = fileTabBar->tabText(newTab);
-                tabText.replace("🔵", "🔴");
-                fileTabBar->setTabText(newTab, tabText);
-            }
-        });
-    });
-
-    QObject::connect(upper_openAction, &QAction::triggered, &loadButton, &QPushButton::click);
-    QObject::connect(upper_saveAction, &QAction::triggered, &saveButton, &QPushButton::click);
-    QObject::connect(upper_exitAction, &QAction::triggered, &window, &QMainWindow::close);
-    QObject::connect(upper_settingsAction, &QAction::triggered, [&window, &app]() {
-        settings(window, app);
-    });
-    QObject::connect(upper_helpAction, &QAction::triggered, [&window]() {
-        QMessageBox::information(&window, "Help", "Help will be added later.\nSorry for now.");
-    });
-
-    // Connect close action to close the current tab
-    QObject::connect(upper_closeAction, &QAction::triggered, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, &saveButton]() {
-        int currentIndex = fileTabBar->currentIndex();
-        if (currentIndex >= 0) {
-            // Check if file is modified
-            if (tabModified[currentIndex]) {
-                QMessageBox msgBox(&window);
-                msgBox.setText("The document has been modified.");
-                msgBox.setInformativeText("Do you want to save your changes?");
-                msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-                msgBox.setDefaultButton(QMessageBox::Save);
-                int ret = msgBox.exec();
-                
-                switch (ret) {
-                    case QMessageBox::Save:
-                        saveButton.click();
-                        return;
-                    case QMessageBox::Cancel:
-                        return;
-                    default:
-                        break;
-                }
-            }
-            
-            // Remove the tab and widget
-            QWidget *widget = textEditStack->widget(currentIndex);
-            textEditStack->removeWidget(widget);
-            delete widget;
-            
-            fileTabBar->removeTab(currentIndex);
-            
-            // Update maps
-            for (int i = currentIndex; i < fileTabBar->count(); i++) {
-                tabToFilePath[i] = tabToFilePath[i+1];
-                tabModified[i] = tabModified[i+1];
-            }
-            tabToFilePath.remove(fileTabBar->count());
-            tabModified.remove(fileTabBar->count());
-            
-            // If no tabs left, create a new one
-            if (fileTabBar->count() == 0) {
-                LineNumberTextEdit *newEditor = new LineNumberTextEdit();
-                newEditor->setPlaceholderText("Start writing!");
-                textEditStack->addWidget(newEditor);
-                int newTab = fileTabBar->addTab("New File 🔵");
-                tabToFilePath[newTab] = "";
-                tabModified[newTab] = false;
-                
-                // Connect text changed signal for the new editor
-                QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
-                    if (!tabModified[newTab]) {
-                        tabModified[newTab] = true;
-                        QString tabText = fileTabBar->tabText(newTab);
-                        tabText.replace("🔵", "🔴");
-                        fileTabBar->setTabText(newTab, tabText);
-                    }
-                });
-            }
-        }
-    });
-
-    // Connect close all action to close all tabs
-    QObject::connect(upper_closeAllAction, &QAction::triggered, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, &saveButton]() {
-        // Check if any files are modified
-        bool anyModified = false;
-        for (int i = 0; i < fileTabBar->count(); i++) {
-            if (tabModified[i]) {
-                anyModified = true;
-                break;
-            }
-        }
-        
-        // If any files are modified, ask for confirmation
-        if (anyModified) {
-            QMessageBox msgBox(&window);
-            msgBox.setText("Some documents have been modified.");
-            msgBox.setInformativeText("Do you want to save your changes?");
-            msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-            msgBox.setDefaultButton(QMessageBox::Save);
-            int ret = msgBox.exec();
-            
-            switch (ret) {
-                case QMessageBox::Save:
-                    for(int i = 0 ; i < fileTabBar->count(); i++)
-                    {
-                        saveButton.click();
-                    }
-                    return;
-                case QMessageBox::Cancel:
-                    return;
-                default:
-                    break;
-            }
-        }
-        
-        // Close all tabs
-        while (fileTabBar->count() > 0) {
-            QWidget *widget = textEditStack->widget(0);
-            textEditStack->removeWidget(widget);
-            delete widget;
-            fileTabBar->removeTab(0);
-        }
-        
-        // Clear maps
-        tabToFilePath.clear();
-        tabModified.clear();
-        
-        // Create a new empty tab
-        LineNumberTextEdit *newEditor = new LineNumberTextEdit();
-        newEditor->setPlaceholderText("Start writing!");
-        textEditStack->addWidget(newEditor);
-        int newTab = fileTabBar->addTab("New File 🔵");
-        tabToFilePath[newTab] = "";
-        tabModified[newTab] = false;
-        
-        // Connect text changed signal for the new editor
-        QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
-            if (!tabModified[newTab]) {
-                tabModified[newTab] = true;
-                QString tabText = fileTabBar->tabText(newTab);
-                tabText.replace("🔵", "🔴");
-                fileTabBar->setTabText(newTab, tabText);
-            }
-        });
-    });
-
-    // Create a custom event filter class
-    class WindowEventFilter : public QObject {
-    public:
-        WindowEventFilter(QMainWindow* window, FileTabBar* tabBar, QStackedWidget* stack, 
-                         QMap<int, bool>* modified, QPushButton* saveBtn)
-            : QObject(window), mainWindow(window), fileTabBar(tabBar), 
-              textEditStack(stack), tabModified(modified), saveButton(saveBtn) {}
-
-    protected:
-        bool eventFilter(QObject *watched, QEvent *event) override {
-            if (watched == mainWindow && event->type() == QEvent::Close) {
-                // Check if any files are modified
-                bool anyModified = false;
-                for (int i = 0; i < fileTabBar->count(); i++) {
-                    if ((*tabModified)[i]) {
-                        anyModified = true;
-                        break;
-                    }
-                }
-                
-                // If any files are modified, ask for confirmation
-                if (anyModified) {
-                    QMessageBox msgBox(mainWindow);
-                    msgBox.setText("Some documents have been modified.");
-                    msgBox.setInformativeText("Do you want to save your changes before closing?");
-                    msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-                    msgBox.setDefaultButton(QMessageBox::Save);
-                    int ret = msgBox.exec();
-                    
-                    switch (ret) {
-                        case QMessageBox::Save:
-                            // Save all modified files
-                            for (int i = 0; i < fileTabBar->count(); i++) {
-                                if ((*tabModified)[i]) {
-                                    // Switch to this tab
-                                    fileTabBar->setCurrentIndex(i);
-                                    textEditStack->setCurrentIndex(i);
-                                    
-                                    // Save the file
-                                    saveButton->click();
-                                }
-                            }
-                            break;
-                        case QMessageBox::Cancel:
-                            // Prevent closing
-                            static_cast<QCloseEvent*>(event)->ignore();
-                            return true;
-                        default:
-                            // Discard changes and continue closing
-                            break;
-                    }
-                }
-            }
-            return QObject::eventFilter(watched, event);
-        }
-
-    private:
-        QMainWindow* mainWindow;
-        FileTabBar* fileTabBar;
-        QStackedWidget* textEditStack;
-        QMap<int, bool>* tabModified;
-        QPushButton* saveButton;
-    };
-
-    // Then in your main function:
-    window.installEventFilter(new WindowEventFilter(&window, fileTabBar, textEditStack, &tabModified, &saveButton));
 
     buttonlayout.addWidget(&saveButton);
     buttonlayout.addWidget(&loadButton);
@@ -1624,4 +1225,3 @@ int main(int argc, char *argv[]) {
     window.show();
     return app.exec();
 }
-

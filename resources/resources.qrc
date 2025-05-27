@@ -3,5 +3,6 @@
         <file>icon.png</file>
         <file>arrow_down.png</file>
 		<file>black_down_arrow.png</file>
+        <file>close.png</file>
     </qresource>
 </RCC>
