@@ -29,6 +29,7 @@
 #include <QMenu>
 #include <QFontMetrics>
 #include <QTextBlock>
+#include <QToolBar>
 #include <QPainter>
 #include <QScrollBar>
 #include <QTextDocument>
@@ -39,6 +40,9 @@
 #include <QTabBar>
 #include <QMap>
 #include <QStackedWidget>
+#include <QPrinter>
+#include <QPrintDialog>
+#include <QInputDialog>
 
 ///asta doar asa de tupeu daca vrei sa faci cand porneste prima oara sa tina minte ce are nevoie utilizatorul 
 ///daca are nevoie de un text editor sau de ide (adica sa ai tree de fisiere in stanga , sa ai un terminal jos sa implementezi pt python si pt c++ suport)
@@ -874,24 +878,123 @@ int main(int argc, char *argv[]) {
     LineNumberTextEdit* firstEditor = new LineNumberTextEdit();
     firstEditor->setPlaceholderText("Start writting !");
     
-    QPushButton saveButton("Save");
-    QPushButton loadButton("Load");
-    QPushButton settingsButton("Settings");
-
     QPalette darkPalette;
     darkPalette.setColor(QPalette::WindowText, Qt::white);
     window.setAutoFillBackground(true);
     app.setPalette(darkPalette);
-
-    QMenuBar menuBar;
-    QMenu fileMenu("File", &menuBar);
-    QAction newAction("New", &menuBar);
-    QAction openAction("Open", &menuBar);
-    QAction saveAction("Save", &menuBar);
-
-    QVBoxLayout mainlayout;
-    QHBoxLayout buttonlayout;
+      QVBoxLayout mainlayout;
     
+    // Create toolbar for buttons
+    QToolBar *toolbar = new QToolBar(&window);
+    toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    toolbar->setMovable(false);
+    window.addToolBar(Qt::TopToolBarArea, toolbar);
+    
+    QPushButton newButton("📄");
+    QPushButton loadButton("📁"); ///open button
+    QPushButton saveButton("💾");
+    QPushButton saveAllButton;
+    QPushButton closeButton;
+    QPushButton closeAllButton;
+    QPushButton printButton("🖨️");
+    QPushButton cutButton("✂️");
+    QPushButton copyButton;
+    QPushButton pasteButton("📋");
+    QPushButton undoButton("↩️");///optional
+    QPushButton redoButton("↪️");///optional
+    QPushButton findButton("🔍");
+    QPushButton replaceButton("🔁");
+    QPushButton settingsButton("⚙️");
+
+    newButton.setToolTip("New File");
+    loadButton.setToolTip("Open File");
+    saveButton.setToolTip("Save File");
+    saveAllButton.setToolTip("Save All Files");
+    closeButton.setToolTip("Close File");
+    closeAllButton.setToolTip("Close All Files");
+    printButton.setToolTip("Print File");
+    cutButton.setToolTip("Cut");
+    copyButton.setToolTip("Copy");
+    pasteButton.setToolTip("Paste");
+    undoButton.setToolTip("Undo");
+    redoButton.setToolTip("Redo");
+    findButton.setToolTip("Find");
+    replaceButton.setToolTip("Replace");    
+    settingsButton.setToolTip("Settings");
+    
+    newButton.setCursor(Qt::PointingHandCursor);
+    loadButton.setCursor(Qt::PointingHandCursor);
+    saveButton.setCursor(Qt::PointingHandCursor);
+    saveAllButton.setCursor(Qt::PointingHandCursor);
+    closeButton.setCursor(Qt::PointingHandCursor);
+    closeAllButton.setCursor(Qt::PointingHandCursor);
+    printButton.setCursor(Qt::PointingHandCursor);
+    cutButton.setCursor(Qt::PointingHandCursor);
+    copyButton.setCursor(Qt::PointingHandCursor);
+    pasteButton.setCursor(Qt::PointingHandCursor);
+    undoButton.setCursor(Qt::PointingHandCursor);
+    redoButton.setCursor(Qt::PointingHandCursor);
+    findButton.setCursor(Qt::PointingHandCursor);
+    replaceButton.setCursor(Qt::PointingHandCursor);
+    settingsButton.setCursor(Qt::PointingHandCursor);
+
+    newButton.setFlat(true);
+    loadButton.setFlat(true);
+    saveButton.setFlat(true);
+    saveAllButton.setFlat(true);
+    closeButton.setFlat(true);
+    closeAllButton.setFlat(true);
+    printButton.setFlat(true);
+    cutButton.setFlat(true);
+    copyButton.setFlat(true);
+    pasteButton.setFlat(true);
+    undoButton.setFlat(true);
+    redoButton.setFlat(true);
+    findButton.setFlat(true);
+    replaceButton.setFlat(true);
+    settingsButton.setFlat(true);
+
+    saveAllButton.setIcon(QIcon(":/save_all.png"));
+    closeButton.setIcon(QIcon(":/close_file.png"));
+    closeAllButton.setIcon(QIcon(":/close_all.png"));
+    copyButton.setIcon(QIcon(":/copy.png"));
+    QSize iconSize(16, 16); // or 24, 24 for larger icons
+    saveAllButton.setIconSize(iconSize);
+    closeButton.setIconSize(iconSize);
+    closeAllButton.setIconSize(iconSize);
+    copyButton.setIconSize(iconSize);
+    
+    auto createSeparator = []() {
+        QFrame *separator = new QFrame();
+        separator->setFrameShape(QFrame::VLine);
+        separator->setFrameShadow(QFrame::Sunken);
+        separator->setFixedWidth(1);
+        separator->setMidLineWidth(0);
+        return separator;
+    };
+    
+    toolbar->addWidget(&newButton);
+    toolbar->addWidget(&loadButton);
+    toolbar->addWidget(&saveButton);
+    toolbar->addWidget(&saveAllButton);
+    toolbar->addSeparator();
+    toolbar->addWidget(&closeButton);
+    toolbar->addWidget(&closeAllButton);
+    toolbar->addSeparator();
+    toolbar->addWidget(&printButton);
+    toolbar->addSeparator();
+    toolbar->addWidget(&cutButton);
+    toolbar->addWidget(&copyButton);
+    toolbar->addWidget(&pasteButton);
+    toolbar->addSeparator();
+    toolbar->addWidget(&undoButton);
+    toolbar->addWidget(&redoButton);
+    toolbar->addSeparator();
+    toolbar->addWidget(&findButton);
+    toolbar->addWidget(&replaceButton);
+    toolbar->addSeparator();
+    toolbar->addWidget(&settingsButton);
+        
     currentTheme = applySystemTheme(app);
     FileTabBar *fileTabBar = new FileTabBar();
     QStackedWidget *textEditStack = new QStackedWidget();
@@ -915,9 +1018,26 @@ int main(int argc, char *argv[]) {
     QLabel *char_line_label = new QLabel("Ln: 0  Col: 1");
     QLabel *positionLabel = new QLabel("Ln: 1  Col: 1 Pos: 1");
     QLabel *encodingLabel = new QLabel("UTF-8");
-    QPushButton *eolButton = new QPushButton("Windows (CRLF)");
-    eolButton->setFlat(true);
+    QPushButton *eolButton = new QPushButton("Windows (CRLF)");    eolButton->setFlat(true);
     eolButton->setCursor(Qt::PointingHandCursor);
+    
+    // Add hover effect styling
+    eolButton->setStyleSheet(
+        "QPushButton {"
+        "    border: 1px solid transparent;"
+        "    padding: 2px 4px;"
+        "    border-radius: 3px;"
+        "    background-color: transparent;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: rgba(255, 255, 255, 0.1);"
+        "    border: 1px solid rgba(255, 255, 255, 0.2);"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: rgba(255, 255, 255, 0.2);"
+        "    border: 1px solid rgba(255, 255, 255, 0.3);"
+        "}"
+    );
     QMenu *eolMenu = new QMenu(eolButton);
     // Function to connect cursor position signals for any editor
     auto connectEditorSignals = [positionLabel, char_line_label, eolButton](LineNumberTextEdit* editor) {
@@ -1132,7 +1252,7 @@ int main(int argc, char *argv[]) {
             }
         }
     });
-    QObject::connect(fileTabBar, &QTabBar::tabCloseRequested, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, file_type](int index) {
+    QObject::connect(fileTabBar, &QTabBar::tabCloseRequested, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, file_type, &saveButton](int index) {
         // Check if file is modified
         if (tabModified[index]) {
             QMessageBox msgBox(&window);
@@ -1145,6 +1265,7 @@ int main(int argc, char *argv[]) {
             switch (ret) {
                 case QMessageBox::Save:
                     // Save logic would go here
+                    saveButton.click();
                     break;
                 case QMessageBox::Cancel:
                     qDebug()<< "aplicatia se va inchide cred aici";
@@ -1344,8 +1465,6 @@ int main(int argc, char *argv[]) {
             }
         });
 
-    QObject::connect(&saveAction, &QAction::triggered, &saveButton, &QPushButton::click);    
-
     QObject::connect(&loadButton, &QPushButton::clicked, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, &currentFilePath, file_type, char_line_label, connectEditorSignals]() {
         QString fileName = QFileDialog::getOpenFileName(&window, "Open File", "C:/", 
             "All Files (*);;C++ files (*.cpp);;Text Files (*.txt)");
@@ -1410,8 +1529,203 @@ int main(int argc, char *argv[]) {
         }
     });
 
-    settingsButton.setToolTip("Settings");
-    settingsButton.setText("⚙️");
+    QObject::connect(&closeButton, &QPushButton::clicked, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, file_type]() {
+        int currentIndex = fileTabBar->currentIndex();
+        if (currentIndex < 0) return;
+        
+        // Trigger tab close request
+        fileTabBar->tabCloseRequested(currentIndex);
+    });
+
+    QObject::connect(&closeAllButton, &QPushButton::clicked, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, file_type]() {
+        // Close all tabs
+        for(int i = 0 ; i < fileTabBar->count();  i++) {
+            fileTabBar->tabCloseRequested(0);
+        }
+        
+        // Reset window title and file type
+        window.setWindowTitle("Basic ahh Text Editor");
+        file_type->setText("Normal text file");
+    });
+
+    QObject::connect(&newButton, &QPushButton::clicked, [&fileTabBar, textEditStack, &tabToFilePath, &tabModified, connectEditorSignals]() {
+        LineNumberTextEdit *newEditor = new LineNumberTextEdit();
+        newEditor->setPlaceholderText("Start writing!");
+        textEditStack->addWidget(newEditor);
+        int newTab = fileTabBar->addTab("New File 🔵");
+        tabToFilePath[newTab] = "";
+        tabModified[newTab] = false;
+        fileTabBar->setCurrentIndex(newTab);
+        textEditStack->setCurrentIndex(newTab);
+        
+        // Connect text changed signal for the new editor
+        QObject::connect(newEditor, &QTextEdit::textChanged, [fileTabBar, newTab, &tabModified]() {
+            if (!tabModified[newTab]) {
+                tabModified[newTab] = true;
+                QString tabText = fileTabBar->tabText(newTab);
+                tabText.replace("🔵", "🔴");
+                fileTabBar->setTabText(newTab, tabText);
+            }
+        });
+        
+        // Connect cursor position and text stats signals
+        connectEditorSignals(newEditor);
+    });
+
+    QObject::connect(&saveAllButton, &QPushButton::clicked, [&window, fileTabBar, textEditStack, &tabToFilePath, &tabModified, eolButton, file_type, &currentFilePath]() {
+        // Iterate through all tabs and save each one
+        for (int i = 0; i < fileTabBar->count(); i++) {
+            LineNumberTextEdit *editor = static_cast<LineNumberTextEdit*>(textEditStack->widget(i));
+            if (!editor) continue;
+            
+            QString filePath = tabToFilePath[i];
+            if (filePath.isEmpty()) {
+                QString content = editor->toPlainText().trimmed();
+                if (content.isEmpty()) {
+                    continue; // Skip this tab - it's an empty new file
+                }
+                // Get current file type from status bar
+                QString currentType = file_type->text();
+                QString filter = "All Files (*)";
+                QString defaultExt = "";
+                
+                // Get filter and default extension for current file type
+                if (fileTypeFilterMap.contains(currentType)) {
+                    filter = fileTypeFilterMap[currentType].first;
+                    defaultExt = fileTypeFilterMap[currentType].second;
+                }
+                
+                filePath = QFileDialog::getSaveFileName(&window, "Save as", "D:/", filter);
+                if (filePath.isEmpty()) continue;
+                
+                // Add default extension if needed
+                if (!filePath.contains(".") && !defaultExt.isEmpty()) {
+                    filePath += defaultExt;
+                }
+            }
+            
+            QFile file(filePath);
+            if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QString content = editor->toPlainText();                
+                QTextStream out(&file);
+                out << content;
+                file.close();
+                
+                tabToFilePath[i] = filePath;
+                tabModified[i] = false;
+                
+                QFileInfo fileInfo(filePath);
+                QString baseName = fileInfo.fileName();
+                fileTabBar->setTabText(i, baseName + " 🔵");
+                currentFilePath = filePath;
+                if (ostype == 1) {
+                    currentFilePath.replace("/", "\\");
+                }
+                window.setWindowTitle(currentFilePath + " - Basic ahh Text Editor");
+            } else {
+                QMessageBox::warning(&window, "Error", "Could not write to file: " + filePath);
+            }
+        }
+    });
+
+    QObject::connect(&printButton, &QPushButton::clicked, [&window, textEditStack]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            QPrinter printer;
+            QPrintDialog printDialog(&printer, &window);
+            if (printDialog.exec() == QDialog::Accepted) {
+                currentEditor->print(&printer);
+            }
+        } else {
+            QMessageBox::warning(&window, "Error", "No editor is currently active.");
+        }
+    });
+
+    QObject::connect(&cutButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            currentEditor->cut();
+        }
+    });
+
+    QObject::connect(&copyButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            currentEditor->copy();
+        }
+    });
+
+    QObject::connect(&pasteButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            currentEditor->paste();
+        }
+    });
+
+    QObject::connect(&undoButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            currentEditor->undo();
+        }
+    });
+
+    QObject::connect(&redoButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            currentEditor->redo();
+        }
+    });
+
+    QObject::connect(&findButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            QString searchText = QInputDialog::getText(&window, "Find", "Enter text to find:");
+            if (!searchText.isEmpty()) {
+                QTextDocument *doc = currentEditor->document();
+                QTextCursor cursor = doc->find(searchText);
+                if (!cursor.isNull()) {
+                    currentEditor->setTextCursor(cursor);
+                } else {
+                    QMessageBox::information(&window, "Find", "Text not found.");
+                }
+            }
+        }
+    });
+
+    QObject::connect(&replaceButton, &QPushButton::clicked, [&]() {
+        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+        if (currentEditor) {
+            QString searchText = QInputDialog::getText(&window, "Replace", "Enter text to find:");
+            if (!searchText.isEmpty()) {
+                QString replaceText = QInputDialog::getText(&window, "Replace", "Enter text to replace with:");
+                QTextDocument *doc = currentEditor->document();
+                QTextCursor cursor = doc->find(searchText);
+                if (!cursor.isNull()) {
+                    cursor.insertText(replaceText);
+                } else {
+                    QMessageBox::information(&window, "Replace", "Text not found.");
+                }
+            }
+        }
+    });
+
+    QObject::connect(&settingsButton, &QPushButton::clicked, [&]()
+    {
+        settings(window, app);
+    });
+    
+    textEditStack->addWidget(firstEditor);
+    if (firstEditor) {
+        QObject::connect(firstEditor, &QTextEdit::textChanged, [fileTabBar, &tabModified]() {
+            int index = 0;
+            if (!tabModified[index]) {
+                tabModified[index] = true;
+                QString tabText = fileTabBar->tabText(index);
+                tabText.replace("🔵", "🔴");
+                fileTabBar->setTabText(index, tabText);
+            }
+        });
+    }
     ///fa settings fara titlebar si cu fixed size
     ///cand se schimba stylesheetu sa se schimbe si culoarea de la titlebar
     ///adauga optiunea de rounded sau nu la toata aplicatia
@@ -1430,23 +1744,7 @@ int main(int argc, char *argv[]) {
     ///daca mai ai timp fa si ceva cu syntax highlight
     ///cand schimbi de la un tab la altul nu se schimba ce tip de fisier e in status bar
 
-    QObject::connect(&settingsButton, &QPushButton::clicked, [&]()
-    {
-        settings(window, app);
-    });
-    ///LineNumberTextEdit* firstEditor = static_cast<LineNumberTextEdit*>(textEditStack->widget(0));
-    textEditStack->addWidget(firstEditor);
-    if (firstEditor) {
-        QObject::connect(firstEditor, &QTextEdit::textChanged, [fileTabBar, &tabModified]() {
-            int index = 0;
-            if (!tabModified[index]) {
-                tabModified[index] = true;
-                QString tabText = fileTabBar->tabText(index);
-                tabText.replace("🔵", "🔴");
-                fileTabBar->setTabText(index, tabText);
-            }
-        });
-    }
+
 
     ///upper menu actions
     QObject::connect(upper_newAction, &QAction::triggered, [fileTabBar, textEditStack, &tabToFilePath, &tabModified, connectEditorSignals]() {
@@ -1763,14 +2061,8 @@ int main(int argc, char *argv[]) {
         QPushButton* saveButton;
     };
 
-    // Then in your main function:
     window.installEventFilter(new WindowEventFilter(&window, fileTabBar, textEditStack, &tabModified, &saveButton));
 
-    buttonlayout.addWidget(&saveButton);
-    buttonlayout.addWidget(&loadButton);
-    buttonlayout.addWidget(&settingsButton);
-
-    mainlayout.addLayout(&buttonlayout);
     mainlayout.addWidget(fileTabBar);
     mainlayout.addWidget(textEditStack);
 

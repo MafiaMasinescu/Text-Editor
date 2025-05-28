@@ -4,5 +4,9 @@
         <file>arrow_down.png</file>
 		<file>black_down_arrow.png</file>
         <file>close.png</file>
+        <file>save_all.png</file>
+        <file>close_file.png</file>
+        <file>close_all.png</file>
+        <file>copy.png</file>
     </qresource>
 </RCC>
