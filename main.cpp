@@ -1595,7 +1595,7 @@ int main(int argc, char *argv[]) {
                     defaultExt = fileTypeFilterMap[currentType].second;
                 }
                 
-                filePath = QFileDialog::getSaveFileName(&window, "Save as", "D:/", filter);
+                filePath = QFileDialog::getSaveFileName(&window, "Save as", "C:/", filter);
                 if (filePath.isEmpty()) continue;
                 
                 // Add default extension if needed
@@ -1676,37 +1676,170 @@ int main(int argc, char *argv[]) {
         }
     });
 
-    QObject::connect(&findButton, &QPushButton::clicked, [&]() {
-        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
-        if (currentEditor) {
-            QString searchText = QInputDialog::getText(&window, "Find", "Enter text to find:");
-            if (!searchText.isEmpty()) {
-                QTextDocument *doc = currentEditor->document();
-                QTextCursor cursor = doc->find(searchText);
-                if (!cursor.isNull()) {
-                    currentEditor->setTextCursor(cursor);
-                } else {
-                    QMessageBox::information(&window, "Find", "Text not found.");
+    auto createFindReplcaeDialog = [](QMainWindow& window, QStackedWidget* textEditStack, int defaultTab = 0){
+        QDialog *find_replace = new QDialog(&window);
+        find_replace->setAttribute(Qt::WA_DeleteOnClose);
+        find_replace->setFixedSize(500, 300);
+        find_replace->setWindowTitle("Find/Replace");
+        QVBoxLayout *findReplace_mainlayout = new QVBoxLayout(find_replace);
+        
+        // Horizontal list widget for Find/Replace tabs
+        QListWidget *upper_functions = new QListWidget(find_replace);
+        upper_functions->addItem("Find");
+        upper_functions->addItem("Replace");
+        upper_functions->setCurrentRow(0);
+        upper_functions->setFlow(QListView::LeftToRight);
+        upper_functions->setFixedHeight(50);
+        upper_functions->setMaximumWidth(200);
+
+        QStackedWidget *findReplace_stack = new QStackedWidget(find_replace);
+
+        // Find Widget with horizontal layout
+        QWidget *findWidget = new QWidget(find_replace);
+        QHBoxLayout *findMainLayout = new QHBoxLayout(findWidget);
+        
+        // Horizontal layout for find input
+        QHBoxLayout *findInputLayout = new QHBoxLayout();
+        QLabel *find_input = new QLabel("Find:", findWidget);
+        find_input->setMinimumWidth(80);
+        QLineEdit *findLineEdit = new QLineEdit(findWidget);
+        findLineEdit->setPlaceholderText("Enter text to find...");
+        
+        findInputLayout->addWidget(find_input);
+        findInputLayout->addWidget(findLineEdit);
+        findMainLayout->addLayout(findInputLayout);
+        
+        // Horizontal layout for buttons below the input
+        QVBoxLayout *findButtonLayout = new QVBoxLayout();
+        findButtonLayout->addSpacing(70);
+        QPushButton *findNextButton = new QPushButton("Find Next", findWidget);
+        QPushButton *findPrevButton = new QPushButton("Find Previous", findWidget);
+        findNextButton->setMaximumWidth(100);
+        findPrevButton->setMaximumWidth(100);
+        findButtonLayout->addWidget(findNextButton);
+        findButtonLayout->addSpacing(10);
+        findButtonLayout->addWidget(findPrevButton);
+        findButtonLayout->addStretch();
+        
+        findMainLayout->addLayout(findButtonLayout);
+        findReplace_stack->addWidget(findWidget);
+
+        // Replace Widget with horizontal layout
+        QWidget *replaceWidget = new QWidget(find_replace);
+        QVBoxLayout *replaceMainLayout = new QVBoxLayout(replaceWidget);
+        
+        // Horizontal layout for find input
+        QHBoxLayout *replaceFindLayout = new QHBoxLayout();
+        QLabel *replace_input = new QLabel("Find:", replaceWidget);
+        replace_input->setMinimumWidth(80);
+        QLineEdit *replaceFindLineEdit = new QLineEdit(replaceWidget);
+        replaceFindLineEdit->setPlaceholderText("Enter text to find...");
+
+        replaceFindLayout->addWidget(replace_input);
+        replaceFindLayout->addWidget(replaceFindLineEdit);
+        replaceMainLayout->addLayout(replaceFindLayout);
+        
+        // Horizontal layout for replace with input
+        QHBoxLayout *replaceWithLayout = new QHBoxLayout();
+        QLabel *replaceWithLabel = new QLabel("Replace with:", replaceWidget);
+        replaceWithLabel->setMinimumWidth(80);
+        QLineEdit *replaceWithLineEdit = new QLineEdit(replaceWidget);
+        replaceWithLineEdit->setPlaceholderText("Enter text to replace with...");
+        replaceWithLayout->addWidget(replaceWithLabel);
+        replaceWithLayout->addWidget(replaceWithLineEdit);
+        replaceMainLayout->addLayout(replaceWithLayout);
+        
+        // Horizontal layout for buttons below the inputs
+        QVBoxLayout *replaceButtonLayout = new QVBoxLayout();
+        QPushButton *replaceNextButton = new QPushButton("Replace Next", replaceWidget);
+        QPushButton *replaceAllButton = new QPushButton("Replace All", replaceWidget);
+        replaceNextButton->setMaximumWidth(100);
+        replaceAllButton->setMaximumWidth(100);
+        replaceFindLayout->addWidget(replaceNextButton);
+        replaceWithLayout->addWidget(replaceAllButton);
+        
+        findReplace_stack->addWidget(replaceWidget);
+        
+        findReplace_mainlayout->addWidget(upper_functions);
+        findReplace_mainlayout->addWidget(findReplace_stack);
+        
+        QObject::connect(upper_functions, &QListWidget::currentRowChanged, findReplace_stack, &QStackedWidget::setCurrentIndex);
+        
+        QObject::connect(findNextButton, &QPushButton::clicked, [&]() {
+            LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+            if (currentEditor) {
+                QString searchText = findLineEdit->text();
+                if (!searchText.isEmpty()) {
+                    QTextDocument *doc = currentEditor->document();
+                    QTextCursor cursor = doc->find(searchText, currentEditor->textCursor());
+                    if (!cursor.isNull()) {
+                        currentEditor->setTextCursor(cursor);
+                    } else {
+                        QMessageBox::information(&window, "Find", "Text not found.");
+                    }
                 }
             }
-        }
+        });
+        
+        QObject::connect(findPrevButton, &QPushButton::clicked, [&]() {
+            LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+            if (currentEditor) {
+                QString searchText = findLineEdit->text();
+                if (!searchText.isEmpty()) {
+                    QTextDocument *doc = currentEditor->document();
+                    QTextCursor cursor = doc->find(searchText, currentEditor->textCursor(), QTextDocument::FindBackward);
+                    if (!cursor.isNull()) {
+                        currentEditor->setTextCursor(cursor);
+                    } else {
+                        QMessageBox::information(&window, "Find", "Text not found.");
+                    }
+                }
+            }
+        });
+        
+        QObject::connect(replaceNextButton, &QPushButton::clicked, [&]() {
+            LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+            if (currentEditor) {
+                QString searchText = replaceFindLineEdit->text();
+                QString replaceText = replaceWithLineEdit->text();
+                if (!searchText.isEmpty()) {
+                    QTextDocument *doc = currentEditor->document();
+                    QTextCursor cursor = doc->find(searchText, currentEditor->textCursor());
+                    if (!cursor.isNull()) {
+                        cursor.insertText(replaceText);
+                    } else {
+                        QMessageBox::information(&window, "Replace", "Text not found.");
+                    }
+                }
+            }
+        });
+        
+        QObject::connect(replaceAllButton, &QPushButton::clicked, [&]() {
+            LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
+            if (currentEditor) {
+                QString searchText = replaceFindLineEdit->text();
+                QString replaceText = replaceWithLineEdit->text();
+                if (!searchText.isEmpty()) {
+                    QTextDocument *doc = currentEditor->document();
+                    QTextCursor cursor = doc->find(searchText);
+                    while (!cursor.isNull()) {
+                        cursor.insertText(replaceText);
+                        cursor = doc->find(searchText, cursor);
+                    }
+                }
+            }
+        });
+        
+        find_replace->show();
+        return find_replace;
+    };
+    QObject::connect(&findButton, &QPushButton::clicked, [&]() {
+        createFindReplcaeDialog(window, textEditStack, 0);
     });
+        
 
     QObject::connect(&replaceButton, &QPushButton::clicked, [&]() {
-        LineNumberTextEdit *currentEditor = static_cast<LineNumberTextEdit*>(textEditStack->currentWidget());
-        if (currentEditor) {
-            QString searchText = QInputDialog::getText(&window, "Replace", "Enter text to find:");
-            if (!searchText.isEmpty()) {
-                QString replaceText = QInputDialog::getText(&window, "Replace", "Enter text to replace with:");
-                QTextDocument *doc = currentEditor->document();
-                QTextCursor cursor = doc->find(searchText);
-                if (!cursor.isNull()) {
-                    cursor.insertText(replaceText);
-                } else {
-                    QMessageBox::information(&window, "Replace", "Text not found.");
-                }
-            }
-        }
+        createFindReplcaeDialog(window, textEditStack, 1);
     });
 
     QObject::connect(&settingsButton, &QPushButton::clicked, [&]()
